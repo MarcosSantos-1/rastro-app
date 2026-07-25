@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /usuarios/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['nome', 'createdAt'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.nome.size() <= 120;
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.nome.size() <= 120;
+      allow delete: if false;
+    }
+
+    match /visitas/{visitaId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId', 'setor', 'status', 'startedAt'])
+        && request.resource.data.setor is string
+        && request.resource.data.status in ['em_execucao', 'finalizada', 'cancelada'];
+      /**
+       * O dono pode editar a própria visita. Qualquer usuário autenticado pode cancelar
+       * uma visita ainda em execução (painel web ao zerar setor — alinha lista mobile).
+       */
+      allow update: if request.auth != null && (
+        (
+          resource.data.userId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.setor == resource.data.setor
+        )
+        || (
+          resource.data.status == 'em_execucao'
+          && request.resource.data.status == 'cancelada'
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.setor == resource.data.setor
+          && request.resource.data.startedAt == resource.data.startedAt
+        )
+      );
+      allow delete: if false;
+    }
+
+    match /bueiros_registros/{regId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'visitaId', 'setor', 'userId', 'tipo', 'quantidade',
+          'lat', 'lng', 'createdAt'
+        ])
+        && request.resource.data.tipo in ['boca_lobo', 'boca_leao']
+        && request.resource.data.quantidade is number
+        && request.resource.data.quantidade > 0
+        && request.resource.data.quantidade <= 100000;
+      /**
+       * Qualquer usuário autenticado pode corrigir (web = operação confiável).
+       * Não exigimos igualdade de visitaId/userId/setor no merge: tipos legados (string vs ref)
+       * ou dados antigos quebravam `==` e geravam PERMISSION_DENIED no mapa.
+       */
+      allow update: if request.auth != null
+        && request.resource.data.tipo in ['boca_lobo', 'boca_leao']
+        && request.resource.data.quantidade is number
+        && request.resource.data.quantidade > 0
+        && request.resource.data.quantidade <= 100000
+        && request.resource.data.lat is number
+        && request.resource.data.lng is number
+        && request.resource.data.lat >= -90
+        && request.resource.data.lat <= 90
+        && request.resource.data.lng >= -180
+        && request.resource.data.lng <= 180;
+      allow delete: if request.auth != null;
+    }
+
+    match /setores_progresso/{setorId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    /** Denúncias / ocorrências Rastro (painel web + app). */
+    match /denuncias/{denunciaId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['categoria', 'status', 'lat', 'lng', 'createdAt'])
+        && request.resource.data.categoria in [
+          'descarte_irregular', 'conteiner_cheio', 'contaminacao_reciclavel', 'outros'
+        ]
+        && request.resource.data.status in [
+          'pendente', 'em_analise', 'validada', 'roteada', 'descartada'
+        ]
+        && request.resource.data.lat is number
+        && request.resource.data.lng is number
+        && request.resource.data.lat >= -90
+        && request.resource.data.lat <= 90
+        && request.resource.data.lng >= -180
+        && request.resource.data.lng <= 180;
+      allow update: if request.auth != null
+        && request.resource.data.categoria in [
+          'descarte_irregular', 'conteiner_cheio', 'contaminacao_reciclavel', 'outros'
+        ]
+        && request.resource.data.status in [
+          'pendente', 'em_analise', 'validada', 'roteada', 'descartada'
+        ]
+        && request.resource.data.lat is number
+        && request.resource.data.lng is number;
+      allow delete: if request.auth != null;
+    }
+  }
+}

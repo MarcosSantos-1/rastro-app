@@ -1,0 +1,13 @@
+# Local docs (not part of the monorepo commit)
+docs/
+
+# Root dependencies
+node_modules/
+
+# macOS
+.DS_Store
+
+# Env / secrets
+.env
+.env.*
+!.env.example

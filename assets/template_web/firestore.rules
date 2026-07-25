@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permite leitura/escrita para desenvolvimento (ajuste para produção com Auth)
+    match /ecopontos/{docId} {
+      allow read, write: if true;
+    }
+    match /registros/{docId} {
+      allow read, write: if true;
+    }
+    match /usuarios/{docId} {
+      allow read, write: if true;
+    }
+  }
+}
