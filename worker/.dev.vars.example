@@ -1,0 +1,2 @@
+# Copie para .dev.vars (gitignored) para `wrangler dev`
+GEMINI_API_KEY=

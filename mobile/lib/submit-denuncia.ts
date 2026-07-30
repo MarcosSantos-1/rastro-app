@@ -1,16 +1,26 @@
-import { addDoc, collection, getDocs, limit, query, updateDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  getDocs,
+  limit,
+  query,
+  updateDoc,
+} from "firebase/firestore";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { Image } from "react-native";
 import type { DenunciaCategoria, DenunciaDoc } from "@/lib/denuncias";
 import { DENUNCIAS_COLLECTION, isDenunciaAtiva, parseDenunciaDoc } from "@/lib/denuncias";
 import { distanceMeters } from "@/lib/geo";
-import { auth, db, storage } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { uploadFotoViaApi } from "@/lib/rastro-api";
 
 const MAX_EDGE = 800;
 const JPEG_QUALITY = 0.6;
 export const ANTI_DUPE_RADIUS_M = 100;
-export const MAP_RADIUS_M = 100;
+export const MAP_RADIUS_M = 400;
+/** Debug: desliga bloqueio de denúncia próxima no registro. Remover antes do hard. */
+export const SKIP_ANTI_DUPE_CHECK = true;
 
 export type SubmitDenunciaInput = {
   categoria: DenunciaCategoria;
@@ -52,14 +62,6 @@ async function compressImage(uri: string): Promise<Blob> {
   });
   const res = await fetch(result.uri);
   return res.blob();
-}
-
-async function uploadFoto(uid: string, denunciaId: string, index: number, uri: string): Promise<string> {
-  const blob = await compressImage(uri);
-  const path = `denuncias/${uid}/${denunciaId}_${index}.jpg`;
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, blob, { contentType: "image/jpeg" });
-  return getDownloadURL(storageRef);
 }
 
 /** Verifica se já existe denúncia ativa a ≤ 100 m. */
@@ -106,7 +108,7 @@ export async function submitDenuncia(input: SubmitDenunciaInput): Promise<{ id: 
   const createdAt = new Date().toISOString();
   const draft: DenunciaDoc = {
     categoria: input.categoria,
-    status: "pendente",
+    status: "em_analise",
     lat: input.lat,
     lng: input.lng,
     createdAt,
@@ -125,9 +127,17 @@ export async function submitDenuncia(input: SubmitDenunciaInput): Promise<{ id: 
   try {
     const urls: string[] = [];
     for (let i = 0; i < input.photoUris.length; i++) {
-      const url = await uploadFoto(user.uid, docRef.id, i, input.photoUris[i]);
-      urls.push(url);
+      const blob = await compressImage(input.photoUris[i]);
+      const uploaded = await uploadFotoViaApi({
+        denunciaId: docRef.id,
+        index: i,
+        blob,
+      });
+      if (!uploaded.fotoUrl) throw new Error("Upload sem URL de foto");
+      urls.push(uploaded.fotoUrl);
     }
+
+    // Só campos de foto — triagem IA é escrita pelo Worker em background.
     await updateDoc(docRef, {
       fotoUrl: urls[0],
       fotoUrls: urls,
@@ -135,6 +145,12 @@ export async function submitDenuncia(input: SubmitDenunciaInput): Promise<{ id: 
     });
   } catch (err) {
     console.warn("upload fotos", err);
+    // Evita órfão sem foto no portal (e retries que disparam Gemini de novo).
+    try {
+      await deleteDoc(docRef);
+    } catch (delErr) {
+      console.warn("cleanup draft", delErr);
+    }
     throw err;
   }
 

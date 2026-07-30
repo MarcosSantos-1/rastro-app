@@ -6,20 +6,30 @@ import {
   MapLayerMenu,
   type MapBaseLayerId,
 } from "@/app/components/map/MapLeafletCommons";
+import { MarkerClusterGroup } from "@/app/components/map/MarkerClusterGroup";
+import { categoriaMapIcon } from "@/app/components/map/ocorrencia-markers";
 import {
   categoriaLabel,
-  categoriaMarkerColor,
   statusLabel,
   type Denuncia,
 } from "@/lib/denuncias";
 import { formatDateTimeBr } from "@/lib/format";
 import { useDenuncias } from "@/lib/hooks/useDenuncias";
-import { CircleMarker, MapContainer, Popup } from "react-leaflet";
+import { MapContainer, Marker, Popup, useMap } from "react-leaflet";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   isDark: boolean;
 };
+
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    const t = window.setTimeout(() => map.invalidateSize(), 80);
+    return () => window.clearTimeout(t);
+  }, [map]);
+  return null;
+}
 
 export default function MapaClient({ isDark }: Props) {
   const { items, loading, error } = useDenuncias(true);
@@ -46,15 +56,17 @@ export default function MapaClient({ isDark }: Props) {
   }, [pontos]);
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-      {/* left-14 evita sobreposição com os controles de zoom do Leaflet */}
-      <div className="absolute left-14 top-3 z-[1000] flex max-w-[calc(100%-7rem)] flex-wrap gap-1.5 rounded-xl border border-zinc-200 bg-white/95 p-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/95">
+    <div className="relative h-full min-h-0 w-full flex-1 overflow-hidden">
+      <div className="absolute left-14 top-3 z-[1000] flex max-w-[calc(100%-7rem)] flex-wrap gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]/95 p-2 shadow-sm backdrop-blur-sm">
         {(
           [
             ["ALL", "Todas"],
             ["descarte_irregular", "Descarte"],
             ["conteiner_cheio", "Contêiner"],
             ["contaminacao_reciclavel", "Reciclável"],
+            ["entulho_obra", "Entulho"],
+            ["residuo_verde", "Verde"],
+            ["outros", "Outros"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -63,14 +75,14 @@ export default function MapaClient({ isDark }: Props) {
             onClick={() => setFiltroCat(key)}
             className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
               filtroCat === key
-                ? "bg-green-600 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200"
+                ? "bg-rastro-600 text-white"
+                : "bg-[var(--accent-soft)] text-[var(--foreground)] hover:opacity-90"
             }`}
           >
             {label}
           </button>
         ))}
-        <span className="self-center px-1 text-[11px] tabular-nums text-zinc-500">
+        <span className="self-center px-1 text-[11px] tabular-nums text-[var(--muted)]">
           {loading ? "…" : pontos.length}
         </span>
       </div>
@@ -86,36 +98,31 @@ export default function MapaClient({ isDark }: Props) {
       <MapContainer
         center={center}
         zoom={8}
-        className="h-full min-h-[420px] w-full flex-1"
+        className="h-full min-h-[560px] w-full"
         scrollWheelZoom
       >
         <IconFix />
+        <InvalidateSize />
         <BaseTiles layer={layer} />
-        {pontos.map((d) => (
-          <CircleMarker
-            key={d.id}
-            center={[d.lat, d.lng]}
-            radius={8}
-            pathOptions={{
-              color: categoriaMarkerColor(d.categoria),
-              fillColor: categoriaMarkerColor(d.categoria),
-              fillOpacity: 0.85,
-              weight: 2,
-            }}
-          >
-            <Popup>
-              <div className="min-w-[200px] space-y-1 text-sm">
-                <p className="font-semibold">{categoriaLabel(d.categoria)}</p>
-                <p className="text-xs text-zinc-600">{statusLabel(d.status)}</p>
-                <p className="text-xs">
-                  {[d.municipio, d.bairro].filter(Boolean).join(" · ") || "—"}
-                </p>
-                <p className="text-xs">{d.endereco || "—"}</p>
-                <p className="text-[11px] text-zinc-500">{formatDateTimeBr(d.createdAt)}</p>
-              </div>
-            </Popup>
-          </CircleMarker>
-        ))}
+        <MarkerClusterGroup chunkedLoading>
+          {pontos.map((d) => (
+            <Marker
+              key={d.id}
+              position={[d.lat, d.lng]}
+              icon={categoriaMapIcon(d.categoria)}
+            >
+              <Popup>
+                <div className="min-w-[200px] space-y-1 text-sm">
+                  <p className="font-semibold">{categoriaLabel(d.categoria)}</p>
+                  <p className="text-xs text-zinc-600">{statusLabel(d.status)}</p>
+                  <p className="text-xs">{d.municipio || "—"}</p>
+                  <p className="text-xs">{d.endereco || "—"}</p>
+                  <p className="text-[11px] text-zinc-500">{formatDateTimeBr(d.createdAt)}</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
       </MapContainer>
     </div>
   );

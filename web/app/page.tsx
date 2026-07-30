@@ -3,8 +3,11 @@
 import { useAuthWeb } from "@/lib/contexts/AuthWebContext";
 import { AppShell } from "./components/AppShell";
 import { DashboardHome } from "./components/DashboardHome";
+import { InteractiveHoverButton } from "./components/ui/interactive-hover-button";
+import { LoginSkeleton } from "./components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 
 export default function HomePage() {
   const { ready, profile, signInWithNome } = useAuthWeb();
@@ -26,11 +29,7 @@ export default function HomePage() {
   };
 
   if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
-      </div>
-    );
+    return <LoginSkeleton />;
   }
 
   if (profile?.nome) {
@@ -40,7 +39,7 @@ export default function HomePage() {
           <DashboardHome />
         </AppShell>
         <p
-          className="pointer-events-none fixed bottom-3 right-3 z-50 text-[11px] tabular-nums text-zinc-400 select-none dark:text-zinc-500"
+          className="pointer-events-none fixed bottom-3 right-3 z-50 text-[11px] tabular-nums text-[var(--muted)] select-none"
           aria-hidden
         >
           1.0.0
@@ -53,39 +52,49 @@ export default function HomePage() {
     <>
       <AppShell>
         <div className="mx-auto max-w-md space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Rastro</h1>
-            <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              Painel administrativo para denúncias ambientais e gestão de resíduos urbanos.
-            </p>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/rastro-logo.png"
+              alt="Rastro"
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-xl object-contain"
+              priority
+            />
+            <div>
+              <h1 className="font-display text-3xl font-bold text-gradient-accent">Rastro</h1>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Painel de denúncias ambientais
+              </p>
+            </div>
           </div>
           <form
             onSubmit={submit}
-            className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
+            className="space-y-4 rounded-2xl border border-[var(--border)] surface-card p-6"
           >
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="block text-sm font-medium text-[var(--foreground)]">
               Nome do operador
               <input
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100"
+                className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--foreground)] outline-none focus:border-rastro-500 focus:ring-2 focus:ring-rastro-500/20"
                 placeholder="Nome completo"
                 autoComplete="name"
               />
             </label>
-            <button
+            <InteractiveHoverButton
               type="submit"
               disabled={busy}
-              className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+              className="w-full disabled:opacity-60"
             >
               {busy ? "Entrando…" : "Entrar"}
-            </button>
+            </InteractiveHoverButton>
           </form>
         </div>
       </AppShell>
       <p
-        className="pointer-events-none fixed bottom-3 right-3 z-50 text-[11px] tabular-nums text-zinc-400 select-none dark:text-zinc-500"
+        className="pointer-events-none fixed bottom-3 right-3 z-50 text-[11px] tabular-nums text-[var(--muted)] select-none"
         aria-hidden
       >
         1.0.0

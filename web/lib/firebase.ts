@@ -1,6 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 /** Config pública do app Web — projeto Firebase `rastro-1f47f` (docs/firebase_api_web.js). */
 const firebaseConfig = {
@@ -26,3 +27,4 @@ export function getFirebaseApp(): FirebaseApp {
 
 export const auth = getAuth(getFirebaseApp());
 export const db = getFirestore(getFirebaseApp());
+export const storage = getStorage(getFirebaseApp());

@@ -5,11 +5,14 @@
   "scripts": {
     "build:setores": "node scripts/build-setores.mjs",
     "test:gemini": "node scripts/test-gemini-image.mjs",
+    "test:gemini:batch": "node scripts/test-gemini-image.mjs ./assets/FotosTest",
     "firebase:login": "npx --yes firebase-tools login",
     "firebase:projects:list": "npx --yes firebase-tools projects:list",
     "deploy:firestore:indexes": "npx --yes firebase-tools deploy --only firestore:indexes",
     "deploy:firestore:rules": "npx --yes firebase-tools deploy --only firestore:rules",
-    "deploy:firestore": "npx --yes firebase-tools deploy --only firestore"
+    "deploy:firestore": "npx --yes firebase-tools deploy --only firestore",
+    "worker:dev": "npm --prefix worker run dev",
+    "worker:deploy": "npm --prefix worker run deploy"
   },
   "dependencies": {
     "@google/genai": "^1.16.0"

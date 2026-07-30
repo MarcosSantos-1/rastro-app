@@ -2,6 +2,8 @@
 
 import { useAuthWeb } from "@/lib/contexts/AuthWebContext";
 import { AppShell } from "../components/AppShell";
+import { InteractiveHoverButton } from "../components/ui/interactive-hover-button";
+import { RelatoriosSkeleton, PageAuthSkeleton } from "../components/ui/skeleton";
 import { splitDateTimeExport } from "@/lib/format";
 import {
   CATEGORIA_LABEL,
@@ -12,6 +14,7 @@ import {
   type DenunciaStatus,
 } from "@/lib/denuncias";
 import { useDenuncias } from "@/lib/hooks/useDenuncias";
+import { Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
@@ -37,10 +40,14 @@ export default function RelatoriosPage() {
       descarte_irregular: 0,
       conteiner_cheio: 0,
       contaminacao_reciclavel: 0,
+      entulho_obra: 0,
+      residuo_verde: 0,
+      outros: 0,
     };
     const porMunicipio = new Map<string, number>();
     for (const d of items) {
-      porStatus[d.status] += 1;
+      const st = d.status === "pendente" ? "em_analise" : d.status;
+      porStatus[st] += 1;
       porCat[d.categoria] += 1;
       const m = d.municipio?.trim() || "Sem município";
       porMunicipio.set(m, (porMunicipio.get(m) ?? 0) + 1);
@@ -74,18 +81,16 @@ export default function RelatoriosPage() {
   };
 
   if (!ready || !profile?.nome) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
-      </div>
-    );
+    return <PageAuthSkeleton />;
   }
 
   return (
     <AppShell>
       <header className="mb-8">
-        <h1 className="text-2xl font-bold lg:text-3xl">Relatórios</h1>
-        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+        <h1 className="font-display text-2xl font-bold tracking-tight lg:text-3xl">
+          Relatórios
+        </h1>
+        <p className="mt-1 text-[var(--muted)]">
           Resumo operacional e exportação das ocorrências do Firestore.
         </p>
       </header>
@@ -97,17 +102,16 @@ export default function RelatoriosPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
-          Carregando…
-        </div>
+        <RelatoriosSkeleton />
       ) : (
         <>
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="text-sm font-semibold text-zinc-500">Por status</h2>
+            <section className="rounded-2xl border border-[var(--border)] surface-card p-5">
+              <h2 className="text-sm font-semibold text-[var(--muted)]">Por status</h2>
               <ul className="mt-3 space-y-2 text-sm">
-                {(Object.keys(STATUS_LABEL) as DenunciaStatus[]).map((s) => (
+                {(
+                  ["em_analise", "validada", "roteada", "descartada"] as DenunciaStatus[]
+                ).map((s) => (
                   <li key={s} className="flex justify-between">
                     <span>{STATUS_LABEL[s]}</span>
                     <span className="tabular-nums font-semibold">{resumo.porStatus[s]}</span>
@@ -116,8 +120,8 @@ export default function RelatoriosPage() {
               </ul>
             </section>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="text-sm font-semibold text-zinc-500">Por categoria</h2>
+            <section className="rounded-2xl border border-[var(--border)] surface-card p-5">
+              <h2 className="text-sm font-semibold text-[var(--muted)]">Por categoria</h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {(Object.keys(CATEGORIA_LABEL) as DenunciaCategoria[]).map((c) => (
                   <li key={c} className="flex justify-between">
@@ -128,10 +132,10 @@ export default function RelatoriosPage() {
               </ul>
             </section>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 sm:col-span-2 lg:col-span-1">
-              <h2 className="text-sm font-semibold text-zinc-500">Por município</h2>
+            <section className="rounded-2xl border border-[var(--border)] surface-card p-5 sm:col-span-2 lg:col-span-1">
+              <h2 className="text-sm font-semibold text-[var(--muted)]">Por município</h2>
               {resumo.porMunicipio.length === 0 ? (
-                <p className="mt-3 text-sm text-zinc-500">Sem dados.</p>
+                <p className="mt-3 text-sm text-[var(--muted)]">Sem dados.</p>
               ) : (
                 <ul className="mt-3 space-y-2 text-sm">
                   {resumo.porMunicipio.map(([nome, n]) => (
@@ -146,29 +150,15 @@ export default function RelatoriosPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
+            <InteractiveHoverButton
               onClick={downloadXlsx}
               disabled={items.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 font-semibold text-white hover:bg-green-500 disabled:opacity-50"
+              className="disabled:opacity-50"
             >
-              <svg
-                className="h-5 w-5 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+              <Download className="h-4 w-4" />
               Exportar planilha (.xlsx)
-            </button>
-            <span className="text-sm text-zinc-500">
+            </InteractiveHoverButton>
+            <span className="text-sm text-[var(--muted)]">
               {items.length} ocorrências · arquivo{" "}
               <span className="font-mono text-xs">rastro-ocorrencias-….xlsx</span>
             </span>

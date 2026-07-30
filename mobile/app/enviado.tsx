@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,38 +9,47 @@ export default function EnviadoScreen() {
   const { municipio } = useLocalSearchParams<{ municipio?: string }>();
   const prefeitura =
     municipio && municipio !== "local"
-      ? `Prefeitura de ${municipio}`
-      : "Prefeitura local";
+      ? `órgão responsável na Prefeitura de ${municipio}`
+      : "órgão responsável";
 
   return (
     <View
       style={[
         styles.root,
         {
-          paddingTop: insets.top + 40,
-          paddingBottom: Math.max(insets.bottom, 20),
+          paddingTop: insets.top + 24,
+          paddingBottom: Math.max(insets.bottom, 16) + 16,
         },
       ]}
     >
       <View style={styles.content}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="checkmark-circle" size={88} color={colors.pinGreen} />
-        </View>
-        <Text style={styles.title}>Enviado</Text>
-        <Text style={styles.sub}>Encaminhado para a {prefeitura}</Text>
+        <Image
+          source={require("@/assets/images/onboarding/success.png")}
+          style={styles.illustration}
+          contentFit="contain"
+        />
+
+        <Text style={styles.title}>Ocorrência enviada!</Text>
         <Text style={styles.body}>
-          Seu registro fortalece o direito de viver em uma cidade limpa. Cada denúncia
-          responsável ajuda a priorizar a remoção de resíduos e a proteger drenagem, rios e
-          espaços públicos. Obrigado por contribuir.
+          Recebemos seu registro e encaminhamos para o {prefeitura}. Obrigado por cuidar da
+          sua cidade!
         </Text>
       </View>
 
-      <Pressable
-        style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-        onPress={() => router.replace("/mapa")}
-      >
-        <Text style={styles.btnText}>Ver no mapa</Text>
-      </Pressable>
+      <View style={styles.actions}>
+        <Pressable
+          style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPrimaryPressed]}
+          onPress={() => router.replace("/registro")}
+        >
+          <Text style={styles.btnPrimaryText}>Registrar outra ocorrência</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.btnSecondary, pressed && styles.btnSecondaryPressed]}
+          onPress={() => router.replace("/mapa")}
+        >
+          <Text style={styles.btnSecondaryText}>Voltar ao mapa</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -53,42 +62,58 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   content: {
+    flex: 1,
     alignItems: "center",
-    gap: 12,
+    justifyContent: "center",
   },
-  iconWrap: {
-    marginBottom: 8,
+  illustration: {
+    width: "100%",
+    maxWidth: 240,
+    aspectRatio: 1,
   },
   title: {
-    fontSize: 32,
+    marginTop: 8,
+    fontSize: 24,
     fontWeight: "800",
     color: colors.text,
-  },
-  sub: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.cta,
     textAlign: "center",
   },
   body: {
-    marginTop: 12,
-    fontSize: 16,
-    lineHeight: 24,
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 22,
     color: colors.textMuted,
     textAlign: "center",
+    maxWidth: 300,
   },
-  btn: {
+  actions: {
+    gap: 12,
+  },
+  btnPrimary: {
     backgroundColor: colors.cta,
     paddingVertical: 18,
-    borderRadius: 14,
+    borderRadius: 999,
     alignItems: "center",
   },
-  btnPressed: {
+  btnPrimaryPressed: {
     backgroundColor: colors.ctaPressed,
   },
-  btnText: {
+  btnPrimaryText: {
     color: colors.ctaText,
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  btnSecondary: {
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  btnSecondaryPressed: {
+    opacity: 0.7,
+  },
+  btnSecondaryText: {
+    color: colors.textMuted,
+    fontSize: 14,
     fontWeight: "700",
   },
 });

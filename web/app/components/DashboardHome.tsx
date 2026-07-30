@@ -6,8 +6,10 @@ import {
   type DenunciaStatus,
 } from "@/lib/denuncias";
 import { useDenuncias } from "@/lib/hooks/useDenuncias";
-import Link from "next/link";
 import { useMemo } from "react";
+import { InteractiveHoverButton } from "./ui/interactive-hover-button";
+import { DashboardSkeleton } from "./ui/skeleton";
+import { cn } from "@/lib/utils";
 
 function DonutStatus({
   pct,
@@ -28,7 +30,7 @@ function DonutStatus({
             cy="18"
             r="15.9155"
             fill="none"
-            className="stroke-zinc-200 dark:stroke-zinc-700"
+            className="stroke-[var(--border)]"
             strokeWidth="3"
           />
           <circle
@@ -36,24 +38,24 @@ function DonutStatus({
             cy="18"
             r="15.9155"
             fill="none"
-            className="stroke-green-600 dark:stroke-green-400"
+            className="stroke-rastro-600 dark:stroke-rastro-400"
             strokeWidth="3"
             strokeDasharray={`${p}, 100`}
             strokeLinecap="round"
           />
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-bold tabular-nums text-green-600 dark:text-green-400">
+          <span className="font-display text-3xl font-bold tabular-nums text-rastro-600 dark:text-rastro-400">
             {p}%
           </span>
-          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
+          <span className="text-xs font-medium text-[var(--muted)]">{label}</span>
         </div>
       </div>
       <div className="max-w-sm text-center sm:text-left">
-        <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+        <p className="text-sm font-semibold text-[var(--foreground)]">
           Encaminhamento às ouvidorias
         </p>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{hint}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>
       </div>
     </div>
   );
@@ -63,12 +65,18 @@ const CAT_ORDER: DenunciaCategoria[] = [
   "descarte_irregular",
   "conteiner_cheio",
   "contaminacao_reciclavel",
+  "entulho_obra",
+  "residuo_verde",
+  "outros",
 ];
 
-const CAT_STYLE: Record<DenunciaCategoria, { bar: string; text: string }> = {
-  descarte_irregular: { bar: "bg-red-600", text: "text-white" },
-  conteiner_cheio: { bar: "bg-amber-500", text: "text-zinc-900" },
-  contaminacao_reciclavel: { bar: "bg-sky-600", text: "text-white" },
+const CAT_STYLE: Record<DenunciaCategoria, string> = {
+  descarte_irregular: "from-red-700/90 to-red-800/80",
+  conteiner_cheio: "from-amber-600/90 to-amber-700/80",
+  contaminacao_reciclavel: "from-sky-700/90 to-sky-800/80",
+  entulho_obra: "from-yellow-800/90 to-yellow-900/80",
+  residuo_verde: "from-rastro-600/90 to-rastro-800/80",
+  outros: "from-zinc-600/90 to-zinc-700/80",
 };
 
 export function DashboardHome() {
@@ -79,7 +87,7 @@ export function DashboardHome() {
       items.filter((d) => d.status === status).length;
 
     const total = items.length;
-    const pendentes = countByStatus("pendente") + countByStatus("em_analise");
+    const emAnalise = countByStatus("pendente") + countByStatus("em_analise");
     const roteadas = countByStatus("roteada");
     const validadas = countByStatus("validada") + roteadas;
     const descartadas = countByStatus("descartada");
@@ -89,6 +97,9 @@ export function DashboardHome() {
       descarte_irregular: 0,
       conteiner_cheio: 0,
       contaminacao_reciclavel: 0,
+      entulho_obra: 0,
+      residuo_verde: 0,
+      outros: 0,
     };
     const porMunicipio = new Map<string, number>();
     for (const d of items) {
@@ -99,7 +110,7 @@ export function DashboardHome() {
 
     return {
       total,
-      pendentes,
+      emAnalise,
       roteadas,
       validadas,
       descartadas,
@@ -109,15 +120,18 @@ export function DashboardHome() {
     };
   }, [items]);
 
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-[var(--foreground)] lg:text-4xl">
           Visão geral
         </h1>
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Painel de denúncias ambientais e gestão de resíduos urbanos.
-          {loading ? " Carregando…" : " Dados em tempo real."}
+        <p className="mt-2 text-[var(--muted)]">
+          Painel de denúncias ambientais e gestão de resíduos urbanos. Dados em tempo real.
         </p>
         {error && (
           <p className="mt-2 text-sm text-red-600 dark:text-red-400">Erro: {error}</p>
@@ -125,32 +139,26 @@ export function DashboardHome() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi title="Ocorrências" value={String(stats.total)} hint="Total de denúncias" />
         <Kpi
-          title="Ocorrências"
-          value={loading ? "…" : String(stats.total)}
-          hint="Total de denúncias"
-        />
-        <Kpi
-          title="Na fila"
-          value={loading ? "…" : String(stats.pendentes)}
-          hint="Pendentes + em análise"
+          title="Em análise"
+          value={String(stats.emAnalise)}
+          hint="Aguardando ou em triagem da IA"
         />
         <Kpi
           title="Validadas / roteadas"
-          value={loading ? "…" : String(stats.validadas)}
+          value={String(stats.validadas)}
           hint={`${stats.roteadas} já encaminhadas à ouvidoria`}
         />
         <Kpi
           title="Descartadas"
-          value={loading ? "…" : String(stats.descartadas)}
+          value={String(stats.descartadas)}
           hint="Rejeitadas (IA ou curadoria)"
         />
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="mb-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-          Taxa de roteamento
-        </p>
+      <div className="rounded-2xl border border-[var(--border)] surface-card p-6">
+        <p className="mb-4 text-sm font-medium text-[var(--muted)]">Taxa de roteamento</p>
         <DonutStatus
           pct={stats.pctRoteadas}
           label="roteadas"
@@ -159,24 +167,24 @@ export function DashboardHome() {
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-          Por categoria
-        </p>
+        <p className="mb-3 text-sm font-medium text-[var(--muted)]">Por categoria</p>
         <div className="grid gap-3 sm:grid-cols-3">
           {CAT_ORDER.map((c) => {
             const n = stats.porCategoria[c];
             const pct =
               stats.total > 0 ? Math.round((n / stats.total) * 1000) / 10 : 0;
-            const st = CAT_STYLE[c];
             return (
               <div
                 key={c}
-                className={`flex min-h-[110px] flex-col justify-between rounded-2xl p-4 ${st.bar} ${st.text}`}
+                className={cn(
+                  "flex min-h-[110px] flex-col justify-between rounded-2xl bg-gradient-to-br p-4 text-white shadow-sm",
+                  CAT_STYLE[c],
+                )}
               >
                 <p className="text-xs font-semibold leading-snug opacity-95">
                   {CATEGORIA_LABEL[c]}
                 </p>
-                <p className="mt-2 text-3xl font-bold tabular-nums">{loading ? "…" : n}</p>
+                <p className="mt-2 font-display text-3xl font-bold tabular-nums">{n}</p>
                 <p className="mt-1 text-[11px] opacity-90">{pct}% do total</p>
               </div>
             );
@@ -185,8 +193,8 @@ export function DashboardHome() {
       </div>
 
       {stats.porMunicipio.length > 0 && (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="mb-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+        <div className="rounded-2xl border border-[var(--border)] surface-card p-6">
+          <p className="mb-4 text-sm font-medium text-[var(--muted)]">
             Densidade por município
           </p>
           <ul className="space-y-3">
@@ -196,12 +204,12 @@ export function DashboardHome() {
               return (
                 <li key={nome}>
                   <div className="mb-1 flex justify-between text-sm">
-                    <span className="font-medium text-zinc-800 dark:text-zinc-100">{nome}</span>
-                    <span className="tabular-nums text-zinc-500">{n}</span>
+                    <span className="font-medium text-[var(--foreground)]">{nome}</span>
+                    <span className="tabular-nums text-[var(--muted)]">{n}</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]">
                     <div
-                      className="h-full rounded-full bg-green-600 dark:bg-green-500"
+                      className="h-full rounded-full bg-gradient-to-r from-rastro-600 to-rastro-400"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -212,28 +220,15 @@ export function DashboardHome() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3 rounded-2xl border border-dashed border-zinc-300 p-6 dark:border-zinc-700">
-        <p className="w-full text-sm font-medium text-zinc-600 dark:text-zinc-400">
-          Ações rápidas
-        </p>
-        <Link
-          href="/painel"
-          className="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-500"
-        >
-          Ver ocorrências
-        </Link>
-        <Link
-          href="/mapa"
-          className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-        >
+      <div className="flex flex-wrap gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--accent-soft)]/30 p-6">
+        <p className="w-full text-sm font-medium text-[var(--muted)]">Ações rápidas</p>
+        <InteractiveHoverButton href="/painel">Ver ocorrências</InteractiveHoverButton>
+        <InteractiveHoverButton href="/mapa" variant="secondary">
           Abrir mapa
-        </Link>
-        <Link
-          href="/relatorios"
-          className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-        >
+        </InteractiveHoverButton>
+        <InteractiveHoverButton href="/relatorios" variant="secondary">
           Relatórios
-        </Link>
+        </InteractiveHoverButton>
       </div>
     </div>
   );
@@ -241,12 +236,12 @@ export function DashboardHome() {
 
 function Kpi({ title, value, hint }: { title: string; value: string; hint: string }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-      <p className="mt-2 text-3xl font-bold tabular-nums text-green-600 dark:text-green-400">
+    <div className="rounded-2xl border border-[var(--border)] surface-card p-6">
+      <p className="text-sm font-medium text-[var(--muted)]">{title}</p>
+      <p className="mt-2 font-display text-3xl font-bold tabular-nums text-rastro-600 dark:text-rastro-400">
         {value}
       </p>
-      <p className="mt-1 text-xs text-zinc-500">{hint}</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>
     </div>
   );
 }

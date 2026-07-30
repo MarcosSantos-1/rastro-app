@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "rastro-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "51c03f3ee06031d1a0609f0c7055b63f",
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "rastro"
+    }
+  ],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "rastro-1f47f",
+    "R2_PUBLIC_BASE_URL": "https://pub-413411832df84c3bb91922a0008ab834.r2.dev",
+    "GEMINI_MODEL": "gemini-3.1-flash-lite",
+    "TRIAGE_ENABLED": "true"
+  }
+  // Secrets (não versionar): GEMINI_API_KEY
+  //   npx wrangler secret put GEMINI_API_KEY
+}

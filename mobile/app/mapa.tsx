@@ -1,20 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  RastroLeafletMap,
-  type RastroLeafletMapHandle,
+  RastroNativeMap,
+  type RastroNativeMapHandle,
   type RastroMapMarker,
-} from "@/components/RastroLeafletMap";
+} from "@/components/RastroNativeMap";
+import { BrandedLoading } from "@/components/BrandedLoading";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { distanceMeters } from "@/lib/geo";
@@ -32,13 +28,39 @@ type Ecoponto = {
 };
 
 const ECOPONTOS = ecopontos as Ecoponto[];
-/** Ecopontos próximos o suficiente para serem úteis no mapa (além do raio de denúncias). */
 const ECOPONTO_RADIUS_M = 2500;
 const FALLBACK = { lat: -23.5505, lng: -46.6333 };
 
+async function loadMarkersNear(lat: number, lng: number): Promise<RastroMapMarker[]> {
+  const denuncias = await listDenunciasNear(lat, lng, MAP_RADIUS_M);
+  const denMarkers: RastroMapMarker[] = denuncias.map((d) => ({
+    id: `d-${d.id}`,
+    lat: d.lat,
+    lng: d.lng,
+    kind: isDenunciaResolvida(d.status)
+      ? "resolvido"
+      : isDenunciaAtiva(d.status)
+        ? "pendente"
+        : "pendente",
+    title: d.endereco || d.categoria,
+  }));
+
+  const ecoMarkers: RastroMapMarker[] = ECOPONTOS.filter(
+    (e) => distanceMeters(lat, lng, e.lat, e.lng) <= ECOPONTO_RADIUS_M,
+  ).map((e) => ({
+    id: `e-${e.id}`,
+    lat: e.lat,
+    lng: e.lng,
+    kind: "ecoponto" as const,
+    title: `Ecoponto ${e.nome}${e.endereco ? ` — ${e.endereco}` : ""}`,
+  }));
+
+  return [...ecoMarkers, ...denMarkers];
+}
+
 export default function MapaScreen() {
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<RastroLeafletMapHandle>(null);
+  const mapRef = useRef<RastroNativeMapHandle>(null);
   const { ensureAnonymous, ready } = useAuth();
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [markers, setMarkers] = useState<RastroMapMarker[]>([]);
@@ -46,6 +68,7 @@ export default function MapaScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const center = userLoc ?? FALLBACK;
+  const activeCount = markers.filter((m) => m.kind === "pendente").length;
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,37 +81,26 @@ export default function MapaScreen() {
         setLoading(false);
         return;
       }
+
+      const last = await Location.getLastKnownPositionAsync();
+      if (last) {
+        const lat = last.coords.latitude;
+        const lng = last.coords.longitude;
+        setUserLoc({ lat, lng });
+        try {
+          setMarkers(await loadMarkersNear(lat, lng));
+        } catch {
+          /* refine abaixo com GPS atual */
+        }
+      }
+
       const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       setUserLoc({ lat, lng });
-
-      const denuncias = await listDenunciasNear(lat, lng, MAP_RADIUS_M);
-      const denMarkers: RastroMapMarker[] = denuncias.map((d) => ({
-        id: `d-${d.id}`,
-        lat: d.lat,
-        lng: d.lng,
-        kind: isDenunciaResolvida(d.status)
-          ? "resolvido"
-          : isDenunciaAtiva(d.status)
-            ? "pendente"
-            : "pendente",
-        title: d.endereco || d.categoria,
-      }));
-
-      const ecoMarkers: RastroMapMarker[] = ECOPONTOS.filter(
-        (e) => distanceMeters(lat, lng, e.lat, e.lng) <= ECOPONTO_RADIUS_M,
-      ).map((e) => ({
-        id: `e-${e.id}`,
-        lat: e.lat,
-        lng: e.lng,
-        kind: "ecoponto" as const,
-        title: `Ecoponto ${e.nome}${e.endereco ? ` — ${e.endereco}` : ""}`,
-      }));
-
-      setMarkers([...ecoMarkers, ...denMarkers]);
+      setMarkers(await loadMarkersNear(lat, lng));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar o mapa");
     } finally {
@@ -103,41 +115,37 @@ export default function MapaScreen() {
     }, [ready, refresh]),
   );
 
-  const legend = useMemo(
-    () => (
-      <View style={styles.legend}>
-        <LegendDot color={colors.pinBlue} label="Ecoponto" />
-        <LegendDot color={colors.pinRed} label="Aguardando" />
-        <LegendDot color={colors.pinGreen} label="Resolvido" />
-      </View>
-    ),
-    [],
-  );
-
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={styles.root}>
       <View style={styles.mapWrap}>
-        <RastroLeafletMap
+        <RastroNativeMap
           ref={mapRef}
           centerLat={center.lat}
           centerLng={center.lng}
-          bufferM={MAP_RADIUS_M}
           markers={markers}
           user={userLoc}
         />
-        {loading ? (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator color={colors.cta} size="large" />
+
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+          <View style={styles.brandPill}>
+            <Image
+              source={require("@/assets/images/rastro-logo.png")}
+              style={styles.brandLogo}
+              contentFit="contain"
+            />
+            <Text style={styles.brandText}>Rastro</Text>
           </View>
-        ) : null}
+        </View>
+
         {error ? (
-          <View style={styles.errorBanner}>
+          <View style={[styles.errorBanner, { top: insets.top + 64 }]}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable onPress={() => void refresh()}>
               <Text style={styles.retry}>Tentar de novo</Text>
             </Pressable>
           </View>
         ) : null}
+
         <Pressable
           style={styles.focusBtn}
           onPress={() => mapRef.current?.focusUser()}
@@ -147,26 +155,42 @@ export default function MapaScreen() {
         </Pressable>
       </View>
 
-      <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        {legend}
-        <Text style={styles.hint}>Ocorrências em até {MAP_RADIUS_M} m de você</Text>
+      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={styles.handle} />
+
+        <View style={styles.sheetHeader}>
+          <View>
+            <Text style={styles.sheetLabel}>Ocorrências por perto</Text>
+            <Text style={styles.sheetCount}>
+              {activeCount} {activeCount === 1 ? "registro ativo" : "registros ativos"}
+            </Text>
+          </View>
+          <View style={styles.legend}>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: colors.pinRed }]} />
+              <Text style={styles.legendText}>Pendente</Text>
+            </View>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: colors.pinGreen }]} />
+              <Text style={styles.legendText}>Resolvido</Text>
+            </View>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: colors.pinBlue }]} />
+              <Text style={styles.legendText}>Ecoponto</Text>
+            </View>
+          </View>
+        </View>
+
         <Pressable
           style={({ pressed }) => [styles.registerBtn, pressed && styles.registerBtnPressed]}
           onPress={() => router.push("/registro")}
         >
-          <Ionicons name="camera" size={24} color={colors.ctaText} />
-          <Text style={styles.registerText}>Registrar ocorrência</Text>
+          <Ionicons name="add" size={22} color={colors.ctaText} />
+          <Text style={styles.registerText}>Novo registro</Text>
         </Pressable>
       </View>
-    </View>
-  );
-}
 
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendLabel}>{label}</Text>
+      <BrandedLoading visible={loading} />
     </View>
   );
 }
@@ -180,23 +204,50 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(240,253,250,0.35)",
+    paddingHorizontal: 20,
+  },
+  brandPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.bgElevated,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  brandLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+  },
+  brandText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.cta,
   },
   errorBanner: {
     position: "absolute",
-    top: 12,
     left: 12,
     right: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: 12,
     gap: 6,
     borderWidth: 1,
     borderColor: colors.border,
+    zIndex: 20,
   },
   errorText: {
     color: colors.danger,
@@ -208,63 +259,97 @@ const styles = StyleSheet.create({
   },
   focusBtn: {
     position: "absolute",
-    right: 14,
-    bottom: 14,
+    right: 20,
+    top: "45%",
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#fff",
+    backgroundColor: colors.bgElevated,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    zIndex: 20,
   },
-  bottom: {
+  sheet: {
     backgroundColor: colors.bgElevated,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingHorizontal: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: 10,
+    paddingTop: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 12,
+  },
+  handle: {
+    alignSelf: "center",
+    width: 48,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+    marginBottom: 16,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  sheetLabel: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  sheetCount: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.text,
+    marginTop: 2,
   },
   legend: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 4,
   },
-  legendItem: {
+  legendRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  legendLabel: {
-    fontSize: 12,
+  legendText: {
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.textMuted,
-  },
-  hint: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: "center",
   },
   registerBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     backgroundColor: colors.cta,
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 18,
+    borderRadius: 999,
+    shadowColor: colors.cta,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   registerBtnPressed: {
     backgroundColor: colors.ctaPressed,
+    transform: [{ scale: 0.98 }],
   },
   registerText: {
     color: colors.ctaText,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
   },
 });

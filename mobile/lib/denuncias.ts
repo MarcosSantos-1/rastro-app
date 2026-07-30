@@ -4,6 +4,8 @@ export type DenunciaCategoria =
   | "descarte_irregular"
   | "conteiner_cheio"
   | "contaminacao_reciclavel"
+  | "entulho_obra"
+  | "residuo_verde"
   | "outros";
 
 export type DenunciaStatus =
@@ -23,6 +25,10 @@ export interface DenunciaDoc {
   lng: number;
   iaScore?: number | null;
   iaValida?: boolean | null;
+  iaContemPessoas?: boolean | null;
+  iaReciclavel?: boolean | null;
+  iaDescricao?: string | null;
+  iaRaw?: unknown;
   createdAt: string;
   atualizadoEm?: string;
   updatedAt?: string;
@@ -41,11 +47,13 @@ export const CATEGORIA_LABEL: Record<DenunciaCategoria, string> = {
   descarte_irregular: "Descarte irregular",
   conteiner_cheio: "Contêiner cheio",
   contaminacao_reciclavel: "Contaminação",
+  entulho_obra: "Entulho / obra",
+  residuo_verde: "Resíduo verde",
   outros: "Outros",
 };
 
 export const STATUS_LABEL: Record<DenunciaStatus, string> = {
-  pendente: "Pendente",
+  pendente: "Em análise",
   em_analise: "Em análise",
   validada: "Validada",
   roteada: "Roteada",
@@ -87,7 +95,7 @@ export function parseDenunciaDoc(id: string, raw: Record<string, unknown>): Denu
   ) as DenunciaCategoria;
 
   const stRaw = asString(raw.status);
-  const status = (stRaw && STATUSES.has(stRaw) ? stRaw : "pendente") as DenunciaStatus;
+  const status = (stRaw && STATUSES.has(stRaw) ? stRaw : "em_analise") as DenunciaStatus;
 
   const createdAt =
     asString(raw.createdAt) ??

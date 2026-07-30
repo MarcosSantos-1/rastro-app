@@ -2,87 +2,63 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  Dimensions,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
+  ImageSourcePropType,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
-import { setOnboardingCompleted } from "@/lib/onboarding";
-
-const { width: SCREEN_W } = Dimensions.get("window");
 
 type Slide = {
-  key: string;
+  image: ImageSourcePropType;
   title: string;
-  body: string;
-  pin?: "blue" | "green" | "red";
-  hint?: string;
+  description: string;
 };
 
 const SLIDES: Slide[] = [
   {
-    key: "welcome",
-    title: "Rastro",
-    body: "O app que mostra para onde vai o lixo da sua região — e ajuda a Prefeitura a agir mais rápido.",
+    image: require("@/assets/images/onboarding/welcome.png"),
+    title: "Bem-vindo ao Rastro",
+    description:
+      "O jeito mais simples de cuidar da sua cidade. Juntos deixamos as ruas mais limpas.",
   },
   {
-    key: "why",
-    title: "Por que registrar?",
-    body: "Cada foto georreferenciada vira um chamado claro para a limpeza urbana. Quanto mais registros honestos, mais a cidade enxerga onde o descarte irregular se concentra.",
-    hint: "Arraste para conhecer o mapa →",
+    image: require("@/assets/images/onboarding/photo.png"),
+    title: "Registre em segundos",
+    description:
+      "Encontrou lixo descartado no lugar errado? Tire uma foto e pronto: o registro começa aí.",
   },
   {
-    key: "blue",
-    title: "Ecoponto",
-    body: "Ponto fixo informado pela Prefeitura para entregar recicláveis, entulhos e objetos para descarte. No mapa, aparece em azul.",
-    pin: "blue",
+    image: require("@/assets/images/onboarding/location.png"),
+    title: "Localização automática",
+    description:
+      "Capturamos o ponto exato por GPS para que a prefeitura saiba onde agir com precisão.",
   },
   {
-    key: "green",
-    title: "Ponto verde",
-    body: "Descarte já resolvido e removido do local que alguém denunciou. Sinal de que o registro fez diferença.",
-    pin: "green",
+    image: require("@/assets/images/onboarding/ai.png"),
+    title: "Inteligência que ajuda",
+    description:
+      "Nossa IA identifica o tipo de resíduo e protege sua privacidade borrando rostos e placas.",
   },
   {
-    key: "red",
-    title: "Ponto vermelho",
-    body: "Descarte reportado e ainda aguardando remoção. É o chamado ativo perto de você.",
-    pin: "red",
-  },
-  {
-    key: "cta",
-    title: "Pronto para começar?",
-    body: "Vamos pedir acesso à localização e à câmera para você ver o mapa da sua região e registrar problemas com uma foto.",
+    image: require("@/assets/images/onboarding/impact.png"),
+    title: "Sua cidade agradece",
+    description:
+      "Cada registro vira dado para decisões públicas melhores. Comece agora a fazer a diferença.",
   },
 ];
 
-function PinDot({ color }: { color: string }) {
-  return <View style={[styles.pin, { backgroundColor: color, borderColor: color }]} />;
-}
-
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const onScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
-    setIndex(i);
-  }, []);
-
-  const goTo = useCallback((i: number) => {
-    scrollRef.current?.scrollTo({ x: i * SCREEN_W, animated: true });
-    setIndex(i);
-  }, []);
+  const isLast = index === SLIDES.length - 1;
+  const slide = SLIDES[index];
 
   const finish = useCallback(async () => {
     if (busy) return;
@@ -91,90 +67,63 @@ export default function OnboardingScreen() {
       await Location.requestForegroundPermissionsAsync();
       await ImagePicker.requestCameraPermissionsAsync();
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-      await setOnboardingCompleted();
       router.replace("/mapa");
     } finally {
       setBusy(false);
     }
   }, [busy]);
 
-  const slide = SLIDES[index];
-  const isLast = index === SLIDES.length - 1;
-  const isFirst = index === 0;
+  const next = useCallback(() => {
+    if (isLast) {
+      void finish();
+      return;
+    }
+    setIndex((i) => i + 1);
+  }, [finish, isLast]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScrollEnd}
-        scrollEventThrottle={16}
-      >
-        {SLIDES.map((s) => (
-          <View key={s.key} style={[styles.page, { width: SCREEN_W }]}>
-            {s.key === "welcome" ? (
-              <Image
-                source={require("@/assets/images/rastro_logo.png")}
-                style={styles.logo}
-                contentFit="contain"
-              />
-            ) : s.pin ? (
-              <PinDot
-                color={
-                  s.pin === "blue" ? colors.pinBlue : s.pin === "green" ? colors.pinGreen : colors.pinRed
-                }
-              />
-            ) : (
-              <View style={styles.pinPlaceholder} />
-            )}
-            <Text style={styles.title}>{s.title}</Text>
-            <Text style={styles.body}>{s.body}</Text>
-            {s.hint ? <Text style={styles.hint}>{s.hint}</Text> : null}
-          </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.dots}>
-        {SLIDES.map((s, i) => (
-          <View key={s.key} style={[styles.dot, i === index && styles.dotActive]} />
-        ))}
+    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+      <View style={styles.header}>
+        <View style={styles.brand}>
+          <Image
+            source={require("@/assets/images/rastro-logo.png")}
+            style={styles.logo}
+            contentFit="contain"
+          />
+          <Text style={styles.brandText}>Rastro</Text>
+        </View>
+        <Pressable onPress={() => void finish()} hitSlop={12} disabled={busy}>
+          <Text style={styles.skip}>Pular</Text>
+        </Pressable>
       </View>
 
-      <View style={styles.actions}>
-        {isFirst ? (
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={() => goTo(1)}
-          >
-            <Text style={styles.btnText}>Começar</Text>
-          </Pressable>
-        ) : isLast ? (
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed, busy && styles.btnDisabled]}
-            onPress={() => void finish()}
-            disabled={busy}
-          >
-            <Text style={styles.btnText}>{busy ? "Abrindo…" : "Entrar no mapa"}</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={() => goTo(Math.min(index + 1, SLIDES.length - 1))}
-          >
-            <Text style={styles.btnText}>Continuar</Text>
-          </Pressable>
-        )}
-        {!isFirst && !isLast ? (
-          <Text style={styles.swipeHint}>ou arraste para o lado</Text>
-        ) : null}
-        {isLast ? null : (
-          <Text style={styles.slideLabel}>
-            {index + 1} / {SLIDES.length}
-            {slide.hint && index === 1 ? "" : ""}
+      <View style={styles.illustrationWrap}>
+        <Image source={slide.image} style={styles.illustration} contentFit="contain" />
+      </View>
+
+      <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+        <View style={styles.dots}>
+          {SLIDES.map((_, i) => (
+            <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+          ))}
+        </View>
+
+        <Text style={styles.title}>{slide.title}</Text>
+        <Text style={styles.body}>{slide.description}</Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.btn,
+            pressed && styles.btnPressed,
+            busy && styles.btnDisabled,
+          ]}
+          onPress={next}
+          disabled={busy}
+        >
+          <Text style={styles.btnText}>
+            {busy ? "Abrindo…" : isLast ? "Começar agora" : "Próximo"}
           </Text>
-        )}
+        </Pressable>
       </View>
     </View>
   );
@@ -185,50 +134,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  page: {
-    paddingHorizontal: 28,
-    justifyContent: "center",
+  header: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingTop: 4,
+  },
+  brand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   logo: {
-    width: 160,
-    height: 120,
-    marginBottom: 28,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
   },
-  pin: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 4,
-    marginBottom: 28,
-  },
-  pinPlaceholder: {
-    width: 56,
-    height: 56,
-    marginBottom: 28,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.text,
-    textAlign: "center",
-    marginBottom: 14,
-  },
-  body: {
-    fontSize: 17,
-    lineHeight: 26,
-    color: colors.textMuted,
-    textAlign: "center",
-  },
-  hint: {
-    marginTop: 28,
-    fontSize: 15,
-    fontWeight: "600",
+  brandText: {
+    fontSize: 18,
+    fontWeight: "800",
     color: colors.cta,
+  },
+  skip: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  illustrationWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  illustration: {
+    width: "100%",
+    maxWidth: 300,
+    aspectRatio: 1,
+  },
+  card: {
+    backgroundColor: colors.bgElevated,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 8,
   },
   dots: {
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
     gap: 8,
     marginBottom: 20,
   },
@@ -236,23 +195,32 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#99f6e4",
+    backgroundColor: "rgba(45, 157, 106, 0.25)",
   },
   dotActive: {
+    width: 24,
     backgroundColor: colors.cta,
-    width: 22,
   },
-  actions: {
-    paddingHorizontal: 24,
-    alignItems: "center",
-    gap: 10,
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: colors.text,
+    textAlign: "center",
+  },
+  body: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.textMuted,
+    textAlign: "center",
+    alignSelf: "center",
+    maxWidth: 300,
   },
   btn: {
+    marginTop: 24,
     backgroundColor: colors.cta,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 14,
-    width: "100%",
+    paddingVertical: 18,
+    borderRadius: 999,
     alignItems: "center",
   },
   btnPressed: {
@@ -263,15 +231,7 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: colors.ctaText,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
-  },
-  swipeHint: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  slideLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
   },
 });

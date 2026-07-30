@@ -2,11 +2,15 @@
 
 import { useAuthWeb } from "@/lib/contexts/AuthWebContext";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import { MapSkeleton, PageAuthSkeleton } from "../components/ui/skeleton";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-const MapaClient = dynamic(() => import("./MapaClient"), { ssr: false });
+const MapaClient = dynamic(() => import("./MapaClient"), {
+  ssr: false,
+  loading: () => <MapSkeleton />,
+});
 
 export default function MapaPage() {
   const { ready, profile } = useAuthWeb();
@@ -18,22 +22,22 @@ export default function MapaPage() {
   }, [ready, profile?.nome, router]);
 
   if (!ready || !profile?.nome) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
-      </div>
-    );
+    return <PageAuthSkeleton />;
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
       <header className="shrink-0">
-        <h1 className="text-xl font-bold lg:text-2xl">Mapa de ocorrências</h1>
-        <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">
+        <h1 className="font-display text-lg font-bold tracking-tight sm:text-xl">
+          Mapa de ocorrências
+        </h1>
+        <p className="text-xs text-[var(--muted)] sm:text-sm">
           Densidade geográfica das denúncias (Firestore).
         </p>
       </header>
-      <MapaClient isDark={isDark} />
+      <div className="relative min-h-[560px] flex-1 overflow-hidden rounded-2xl border border-[var(--border)]">
+        <MapaClient isDark={isDark} />
+      </div>
     </div>
   );
 }

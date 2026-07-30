@@ -89,7 +89,8 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll(['categoria', 'status', 'lat', 'lng', 'createdAt'])
         && request.resource.data.categoria in [
-          'descarte_irregular', 'conteiner_cheio', 'contaminacao_reciclavel', 'outros'
+          'descarte_irregular', 'conteiner_cheio', 'contaminacao_reciclavel',
+          'entulho_obra', 'residuo_verde', 'outros'
         ]
         && request.resource.data.status in [
           'pendente', 'em_analise', 'validada', 'roteada', 'descartada'
@@ -102,7 +103,8 @@ service cloud.firestore {
         && request.resource.data.lng <= 180;
       allow update: if request.auth != null
         && request.resource.data.categoria in [
-          'descarte_irregular', 'conteiner_cheio', 'contaminacao_reciclavel', 'outros'
+          'descarte_irregular', 'conteiner_cheio', 'contaminacao_reciclavel',
+          'entulho_obra', 'residuo_verde', 'outros'
         ]
         && request.resource.data.status in [
           'pendente', 'em_analise', 'validada', 'roteada', 'descartada'

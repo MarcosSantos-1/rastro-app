@@ -28,13 +28,20 @@ export const MAP_BASE_LAYERS: {
   { id: "light", label: "Mapa claro" },
   { id: "dark_matter", label: "Dark Matter" },
   { id: "esri", label: "Satélite" },
-  { id: "esri_labels", label: "Satélite + nomes" },
+  { id: "esri_labels", label: "Satélite + ruas" },
 ];
 
 const ESRI_IMAGERY =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const ESRI_LABELS =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+/** Traçado de vias (Esri) — complementa o satélite. */
+const ESRI_TRANSPORT =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
+/**
+ * Labels OSM via Carto (inclui nomes de ruas). O overlay Esri Boundaries_and_Places
+ * só traz países/estados/POIs — por isso usamos Carto dark_only_labels no satélite.
+ */
+const CARTO_DARK_LABELS =
+  "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png";
 const CARTO_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 const CARTO_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
@@ -65,10 +72,18 @@ export function BaseTiles({ layer }: { layer: MapBaseLayerId }) {
       <>
         <TileLayer key="esri-base" attribution={ATTR_ESRI} url={ESRI_IMAGERY} maxZoom={19} />
         <TileLayer
-          key="esri-labels"
+          key="esri-roads"
           attribution={ATTR_ESRI}
-          url={ESRI_LABELS}
+          url={ESRI_TRANSPORT}
           maxZoom={19}
+          opacity={0.85}
+          pane="overlayPane"
+        />
+        <TileLayer
+          key="carto-street-labels"
+          attribution={ATTR_CARTO}
+          url={CARTO_DARK_LABELS}
+          maxZoom={20}
           pane="overlayPane"
         />
       </>
@@ -97,7 +112,7 @@ export function MapLayerMenu({
   return (
     <div className="absolute bottom-3 right-3 z-[1000]">
       {open && (
-        <div className="mb-2 min-w-[180px] overflow-hidden rounded-xl border border-zinc-200 bg-white/95 py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/95">
+        <div className="mb-2 min-w-[180px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]/95 py-1 shadow-lg backdrop-blur-sm">
           {MAP_BASE_LAYERS.map((l) => (
             <button
               key={l.id}
@@ -108,8 +123,8 @@ export function MapLayerMenu({
               }}
               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold ${
                 layer === l.id
-                  ? "bg-green-600 text-white"
-                  : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  ? "bg-rastro-600 text-white"
+                  : "text-[var(--foreground)] hover:bg-[var(--accent-soft)]"
               }`}
             >
               {l.label}
@@ -120,7 +135,7 @@ export function MapLayerMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white/95 text-zinc-700 shadow-md hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]/95 text-[var(--foreground)] shadow-md hover:bg-[var(--accent-soft)]"
         title="Camadas do mapa"
         aria-label="Camadas do mapa"
         aria-expanded={open}

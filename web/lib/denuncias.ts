@@ -4,6 +4,8 @@ export type DenunciaCategoria =
   | "descarte_irregular"
   | "conteiner_cheio"
   | "contaminacao_reciclavel"
+  | "entulho_obra"
+  | "residuo_verde"
   | "outros";
 
 export type DenunciaStatus =
@@ -23,6 +25,9 @@ export interface DenunciaDoc {
   lng: number;
   iaScore?: number | null;
   iaValida?: boolean | null;
+  iaDescricao?: string | null;
+  iaContemPessoas?: boolean | null;
+  iaReciclavel?: boolean | null;
   createdAt: string;
   atualizadoEm?: string;
   updatedAt?: string;
@@ -41,16 +46,26 @@ export const CATEGORIA_LABEL: Record<DenunciaCategoria, string> = {
   descarte_irregular: "Descarte irregular",
   conteiner_cheio: "Contêiner cheio",
   contaminacao_reciclavel: "Contaminação de reciclável",
+  entulho_obra: "Entulho / obra",
+  residuo_verde: "Resíduo verde",
   outros: "Outros",
 };
 
 export const STATUS_LABEL: Record<DenunciaStatus, string> = {
-  pendente: "Pendente",
+  pendente: "Em análise", // legado — tratado como em_analise na UI
   em_analise: "Em análise",
   validada: "Validada",
   roteada: "Roteada",
   descartada: "Descartada",
 };
+
+/** Status usados em filtros/ações do painel (sem Pendente). */
+export const STATUS_FILTERS = [
+  "em_analise",
+  "validada",
+  "roteada",
+  "descartada",
+] as const satisfies readonly DenunciaStatus[];
 
 const CATEGORIAS = new Set<string>(Object.keys(CATEGORIA_LABEL));
 const STATUSES = new Set<string>(Object.keys(STATUS_LABEL));
@@ -66,16 +81,41 @@ export function statusLabel(s: DenunciaStatus): string {
 export function statusBadgeClass(s: DenunciaStatus): string {
   switch (s) {
     case "roteada":
-      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
+      return "bg-emerald-600/20 text-emerald-800 dark:text-emerald-300";
     case "validada":
-      return "bg-sky-500/15 text-sky-700 dark:text-sky-300";
+      return "bg-green-500/20 text-green-700 dark:bg-green-500/25 dark:text-green-300";
     case "em_analise":
+    case "pendente":
       return "bg-amber-500/15 text-amber-800 dark:text-amber-300";
     case "descartada":
-      return "bg-red-500/15 text-red-700 dark:text-red-400";
+      return "bg-red-600/20 text-red-700 dark:bg-red-500/25 dark:text-red-300";
     default:
       return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400";
   }
+}
+
+/** Normaliza status legado pendente → em_analise para filtros. */
+export function normalizeDenunciaStatus(s: DenunciaStatus): DenunciaStatus {
+  return s === "pendente" ? "em_analise" : s;
+}
+
+/**
+ * Se a IA já respondeu e o doc ainda está em análise, aplica o status final.
+ * Não sobrescreve roteada / ajustes manuais posteriores.
+ */
+export function statusAposTriagemIa(
+  status: DenunciaStatus,
+  iaValida: boolean | null | undefined,
+): DenunciaStatus {
+  if (iaValida == null) return normalizeDenunciaStatus(status);
+  if (status === "em_analise" || status === "pendente") {
+    return iaValida ? "validada" : "descartada";
+  }
+  return status;
+}
+
+export function isStatusEmAnalise(s: DenunciaStatus): boolean {
+  return s === "em_analise" || s === "pendente";
 }
 
 export function categoriaMarkerColor(c: DenunciaCategoria): string {
@@ -86,6 +126,10 @@ export function categoriaMarkerColor(c: DenunciaCategoria): string {
       return "#d97706";
     case "contaminacao_reciclavel":
       return "#2563eb";
+    case "entulho_obra":
+      return "#a16207";
+    case "residuo_verde":
+      return "#16a34a";
     case "outros":
       return "#71717a";
   }
@@ -115,7 +159,9 @@ export function parseDenunciaDoc(id: string, raw: Record<string, unknown>): Denu
   ) as DenunciaCategoria;
 
   const stRaw = asString(raw.status);
-  const status = (stRaw && STATUSES.has(stRaw) ? stRaw : "pendente") as DenunciaStatus;
+  const statusRaw = (stRaw && STATUSES.has(stRaw) ? stRaw : "em_analise") as DenunciaStatus;
+  const iaValida = asBool(raw.iaValida) ?? null;
+  const status = statusAposTriagemIa(statusRaw, iaValida);
 
   const createdAt =
     asString(raw.createdAt) ??
@@ -142,7 +188,10 @@ export function parseDenunciaDoc(id: string, raw: Record<string, unknown>): Denu
     lat,
     lng,
     iaScore: asNumber(raw.iaScore) ?? null,
-    iaValida: asBool(raw.iaValida) ?? null,
+    iaValida,
+    iaDescricao: asString(raw.iaDescricao) ?? null,
+    iaContemPessoas: asBool(raw.iaContemPessoas) ?? null,
+    iaReciclavel: asBool(raw.iaReciclavel) ?? null,
     createdAt,
     atualizadoEm,
     cidadaoAnonimo: asBool(raw.cidadaoAnonimo),
@@ -157,4 +206,11 @@ export function parseDenunciaDoc(id: string, raw: Record<string, unknown>): Denu
     observacao: asString(raw.observacao),
     userId: asString(raw.userId),
   };
+}
+
+/** URLs de foto normalizadas (fotoUrls ou fallback fotoUrl). */
+export function denunciaFotoUrls(d: Pick<Denuncia, "fotoUrl" | "fotoUrls">): string[] {
+  if (d.fotoUrls?.length) return d.fotoUrls.filter(Boolean);
+  if (d.fotoUrl) return [d.fotoUrl];
+  return [];
 }
