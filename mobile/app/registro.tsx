@@ -3,10 +3,12 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -52,6 +54,7 @@ const CATEGORIAS: CategoryOption[] = [
 export default function RegistroScreen() {
   const insets = useSafeAreaInsets();
   const { ensureAnonymous } = useAuth();
+  const scrollRef = useRef<ScrollView>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [categoria, setCategoria] = useState<DenunciaCategoria | null>(null);
   const [observacao, setObservacao] = useState("");
@@ -61,6 +64,40 @@ export default function RegistroScreen() {
   const [municipio, setMunicipio] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const onShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
+
+  const scrollDescIntoView = useCallback(() => {
+    const delay = Platform.OS === "ios" ? 80 : 180;
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, delay);
+  }, []);
+
+  // Depois que o padding do teclado redimensiona a tela, garante que o campo fique visível
+  useEffect(() => {
+    if (keyboardHeight <= 0) return;
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [keyboardHeight]);
 
   useEffect(() => {
     void (async () => {
@@ -215,8 +252,19 @@ export default function RegistroScreen() {
     !submitting &&
     (categoria !== "outros" || !!outrosTexto.trim());
 
+  const keyboardOpen = keyboardHeight > 0;
+
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.root,
+        {
+          paddingTop: insets.top + 8,
+          // Empurra o formulário (e o rodapé) para cima do teclado
+          paddingBottom: keyboardHeight,
+        },
+      ]}
+    >
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
@@ -229,8 +277,11 @@ export default function RegistroScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: 24 }]}
+        ref={scrollRef}
+        style={styles.scrollFlex}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 32 }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
         {hasPhoto ? (
@@ -335,6 +386,7 @@ export default function RegistroScreen() {
               value={outrosTexto}
               onChangeText={setOutrosTexto}
               maxLength={120}
+              onFocus={scrollDescIntoView}
             />
           </View>
         ) : (
@@ -350,12 +402,18 @@ export default function RegistroScreen() {
               onChangeText={setObservacao}
               multiline
               maxLength={400}
+              onFocus={scrollDescIntoView}
             />
           </>
         )}
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: keyboardOpen ? 12 : Math.max(insets.bottom, 16) },
+        ]}
+      >
         <Pressable
           style={({ pressed }) => [
             styles.sendBtn,
@@ -408,6 +466,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     color: colors.text,
+  },
+  scrollFlex: {
+    flex: 1,
   },
   scroll: {
     paddingHorizontal: 20,

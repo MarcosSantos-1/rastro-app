@@ -92,7 +92,9 @@ export async function listDenunciasNear(
   const out = [];
   for (const docSnap of snap.docs) {
     const d = parseDenunciaDoc(docSnap.id, docSnap.data() as Record<string, unknown>);
-    if (!d || d.status === "descartada") continue;
+    // Só pós-IA no mapa: descartadas (arquivadas) e em análise não aparecem.
+    if (!d || d.status === "descartada" || d.status === "em_analise") continue;
+    if (d.iaValida === false) continue;
     const dist = distanceMeters(lat, lng, d.lat, d.lng);
     if (dist <= radiusM) out.push({ ...d, distanceM: dist });
   }

@@ -6,7 +6,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: "Rastro",
-    slug: "rastro",
+    // Deve bater com o projeto EAS (projectId abaixo); o slug remoto é "mobile" e não pode ser alterado.
+    slug: "mobile",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",

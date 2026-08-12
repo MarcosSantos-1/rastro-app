@@ -1,16 +1,11 @@
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 
 export default function EnviadoScreen() {
   const insets = useSafeAreaInsets();
-  const { municipio } = useLocalSearchParams<{ municipio?: string }>();
-  const prefeitura =
-    municipio && municipio !== "local"
-      ? `órgão responsável na Prefeitura de ${municipio}`
-      : "órgão responsável";
 
   return (
     <View
@@ -31,8 +26,8 @@ export default function EnviadoScreen() {
 
         <Text style={styles.title}>Ocorrência enviada!</Text>
         <Text style={styles.body}>
-          Recebemos seu registro e encaminhamos para o {prefeitura}. Obrigado por cuidar da
-          sua cidade!
+          Recebemos seu registro. Nossa IA vai analisar as fotos e, se tudo estiver certo,
+          o ponto aparece no mapa. Obrigado por cuidar da sua cidade!
         </Text>
       </View>
 
@@ -45,9 +40,9 @@ export default function EnviadoScreen() {
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.btnSecondary, pressed && styles.btnSecondaryPressed]}
-          onPress={() => router.replace("/mapa")}
+          onPress={() => router.replace("/(tabs)/index")}
         >
-          <Text style={styles.btnSecondaryText}>Voltar ao mapa</Text>
+          <Text style={styles.btnSecondaryText}>Voltar ao início</Text>
         </Pressable>
       </View>
     </View>

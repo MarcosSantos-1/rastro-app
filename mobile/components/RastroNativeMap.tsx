@@ -1,4 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import Constants from "expo-constants";
+import { Image } from "expo-image";
 import {
   forwardRef,
   useEffect,
@@ -20,6 +22,12 @@ export type RastroMapMarker = {
   lng: number;
   kind: RastroMapMarkerKind;
   title?: string;
+  photoUrl?: string;
+  photoUrls?: string[];
+  categoria?: string;
+  createdAt?: string;
+  endereco?: string;
+  statusLabel?: string;
 };
 
 export type RastroNativeMapProps = {
@@ -27,6 +35,9 @@ export type RastroNativeMapProps = {
   centerLng: number;
   markers: RastroMapMarker[];
   user: { lat: number; lng: number } | null;
+  selectedId?: string | null;
+  onMarkerPress?: (marker: RastroMapMarker) => void;
+  onMapPress?: () => void;
 };
 
 export type RastroNativeMapHandle = {
@@ -51,9 +62,24 @@ function kindColor(kind: RastroMapMarkerKind): string {
   return colors.pinRed;
 }
 
-function PinMarker({ kind }: { kind: RastroMapMarkerKind }) {
+function PinMarker({ kind, photoUrl }: { kind: RastroMapMarkerKind; photoUrl?: string }) {
   const bg = kindColor(kind);
   const icon = kind === "ecoponto" ? "recycle" : "trash-can";
+
+  if (photoUrl && kind !== "ecoponto") {
+    return (
+      <View style={styles.pinWrap} collapsable={false}>
+        <View style={[styles.photoPin, { borderColor: bg }]} collapsable={false}>
+          <Image source={{ uri: photoUrl }} style={styles.photoImg} contentFit="cover" />
+          <View style={[styles.photoBadge, { backgroundColor: bg }]}>
+            <MaterialCommunityIcons name="trash-can" size={10} color="#fff" />
+          </View>
+        </View>
+        <View style={[styles.pinTip, { borderTopColor: bg }]} collapsable={false} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.pinWrap} collapsable={false}>
       <View style={[styles.pinHead, { backgroundColor: bg }]} collapsable={false}>
@@ -65,7 +91,10 @@ function PinMarker({ kind }: { kind: RastroMapMarkerKind }) {
 }
 
 export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMapProps>(
-  function RastroNativeMap({ centerLat, centerLng, markers, user }, ref) {
+  function RastroNativeMap(
+    { centerLat, centerLng, markers, user, selectedId, onMarkerPress, onMapPress },
+    ref,
+  ) {
     const mapRef = useRef<MapView>(null);
     const didInitialFocus = useRef(false);
     const userRef = useRef(user);
@@ -105,9 +134,23 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
 
     useEffect(() => {
       setTracksViewChanges(true);
-      const t = setTimeout(() => setTracksViewChanges(false), 750);
+      const t = setTimeout(() => setTracksViewChanges(false), 900);
       return () => clearTimeout(t);
-    }, [markers]);
+    }, [markers, selectedId]);
+
+    useEffect(() => {
+      if (!__DEV__ || Platform.OS !== "android") return;
+      const extra = Constants.expoConfig?.extra as { googleMapsApiKey?: string } | undefined;
+      const key =
+        extra?.googleMapsApiKey?.trim() ||
+        process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+        "";
+      if (!key) {
+        console.warn(
+          "[RastroMaps] EXPO_PUBLIC_GOOGLE_MAPS_API_KEY vazia. Mapa Android fica em branco. Rode: npm run check-maps-android",
+        );
+      }
+    }, []);
 
     return (
       <View style={styles.wrap}>
@@ -123,18 +166,28 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
           pitchEnabled={false}
           toolbarEnabled={false}
           moveOnMarkerPress={false}
+          onPress={() => onMapPress?.()}
         >
-          {markers.map((m) => (
-            <Marker
-              key={m.id}
-              coordinate={{ latitude: m.lat, longitude: m.lng }}
-              title={m.title}
-              tracksViewChanges={tracksViewChanges}
-              anchor={{ x: 0.5, y: 1 }}
-            >
-              <PinMarker kind={m.kind} />
-            </Marker>
-          ))}
+          {markers.map((m) => {
+            const isDenuncia = m.kind !== "ecoponto";
+            const zIndex = isDenuncia ? (selectedId === m.id ? 2000 : 1000) : 100;
+            return (
+              <Marker
+                key={m.id}
+                coordinate={{ latitude: m.lat, longitude: m.lng }}
+                title={m.title}
+                tracksViewChanges={tracksViewChanges || selectedId === m.id}
+                anchor={{ x: 0.5, y: 1 }}
+                zIndex={zIndex}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onMarkerPress?.(m);
+                }}
+              >
+                <PinMarker kind={m.kind} photoUrl={m.photoUrl} />
+              </Marker>
+            );
+          })}
         </MapView>
       </View>
     );
@@ -146,8 +199,8 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   pinWrap: {
     alignItems: "center",
-    width: 40,
-    height: 48,
+    width: 44,
+    height: 52,
   },
   pinHead: {
     width: 36,
@@ -162,6 +215,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
+  },
+  photoPin: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 3,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  photoImg: {
+    width: "100%",
+    height: "100%",
+  },
+  photoBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
   },
   pinTip: {
     width: 0,

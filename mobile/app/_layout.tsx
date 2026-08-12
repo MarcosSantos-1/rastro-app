@@ -24,7 +24,7 @@ function AppShell() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
-          <Stack.Screen name="mapa" />
+          <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="registro"
             options={{
@@ -33,7 +33,13 @@ function AppShell() {
               contentStyle: { backgroundColor: "#f7f9f8" },
             }}
           />
-          <Stack.Screen name="enviado" />
+          <Stack.Screen
+            name="enviado"
+            options={{
+              presentation: "fullScreenModal",
+              animation: "fade",
+            }}
+          />
         </Stack>
       </ThemeProvider>
       <BrandedLoading visible={!ready} />
