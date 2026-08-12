@@ -68,6 +68,13 @@ function AppShell() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
+          <Stack.Screen
+            name="ecopontos-intro"
+            options={{
+              presentation: "fullScreenModal",
+              animation: "fade",
+            }}
+          />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="login"

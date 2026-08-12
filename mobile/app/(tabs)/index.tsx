@@ -21,13 +21,8 @@ export default function InicioScreen() {
       <Text style={styles.greeting}>Olá!</Text>
 
       <View style={styles.hero}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroIconWrap}>
-            <Ionicons name="leaf" size={26} color="#fff" />
-          </View>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>Rastro</Text>
-          </View>
+        <View style={styles.heroIconWrap}>
+          <Ionicons name="leaf" size={26} color="#fff" />
         </View>
         <Text style={styles.heroTitle}>Seu impacto começa aqui</Text>
         <Text style={styles.heroBody}>
@@ -123,12 +118,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
-  heroTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
   heroIconWrap: {
     width: 48,
     height: 48,
@@ -136,18 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
-  },
-  heroBadge: {
-    backgroundColor: colors.ctaSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  heroBadgeText: {
-    color: colors.cta,
-    fontWeight: "800",
-    fontSize: 12,
-    letterSpacing: 0.4,
+    marginBottom: 16,
   },
   heroTitle: {
     fontSize: 22,

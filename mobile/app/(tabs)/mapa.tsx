@@ -1,7 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as Linking from "expo-linking";
 import * as Location from "expo-location";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   Modal,
@@ -21,6 +22,11 @@ import { BrandedLoading } from "@/components/BrandedLoading";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { distanceMeters } from "@/lib/geo";
+import {
+  hasSeenEcopontosIntro,
+  setPendingEcoponto,
+  takePendingEcoponto,
+} from "@/lib/ecopontos-intro";
 import { CATEGORIA_LABEL, STATUS_LABEL, type DenunciaCategoria } from "@/lib/denuncias";
 import { listDenunciasNear, MAP_RADIUS_M } from "@/lib/submit-denuncia";
 import ecopontos from "@/assets/data/ecopontos-sp.json";
@@ -51,6 +57,23 @@ function formatDate(iso?: string): string {
   });
 }
 
+function formatDistance(meters?: number): string | null {
+  if (meters == null || !Number.isFinite(meters)) return null;
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  const km = meters / 1000;
+  return `${km.toFixed(km < 10 ? 1 : 0).replace(".", ",")} km`;
+}
+
+function openGoogleMaps(lat: number, lng: number) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  void Linking.openURL(url);
+}
+
+function openWaze(lat: number, lng: number) {
+  const url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  void Linking.openURL(url);
+}
+
 async function loadMarkersNear(lat: number, lng: number): Promise<RastroMapMarker[]> {
   const denuncias = await listDenunciasNear(lat, lng, MAP_RADIUS_M);
   const denMarkers: RastroMapMarker[] = denuncias.map((d) => {
@@ -70,6 +93,7 @@ async function loadMarkersNear(lat: number, lng: number): Promise<RastroMapMarke
       createdAt: d.createdAt,
       endereco: d.endereco,
       statusLabel: STATUS_LABEL[d.status] ?? d.status,
+      distanceM: d.distanceM,
     };
   });
 
@@ -84,6 +108,7 @@ async function loadMarkersNear(lat: number, lng: number): Promise<RastroMapMarke
     endereco: e.endereco || e.distrito,
     statusLabel: "Ecoponto",
     categoria: "Ponto de coleta",
+    distanceM: distanceMeters(lat, lng, e.lat, e.lng),
   }));
 
   return [...ecoMarkers, ...denMarkers];
@@ -106,6 +131,18 @@ export default function MapaScreen() {
   const clearSelection = useCallback(() => {
     setSelected(null);
     setPreviewUri(null);
+  }, []);
+
+  const handleMarkerPress = useCallback(async (marker: RastroMapMarker) => {
+    if (marker.kind === "ecoponto") {
+      const seen = await hasSeenEcopontosIntro();
+      if (!seen) {
+        setPendingEcoponto(marker);
+        router.push("/ecopontos-intro");
+        return;
+      }
+    }
+    setSelected(marker);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -150,6 +187,8 @@ export default function MapaScreen() {
     useCallback(() => {
       if (!ready) return;
       void refresh();
+      const pending = takePendingEcoponto();
+      if (pending) setSelected(pending);
     }, [ready, refresh]),
   );
 
@@ -170,7 +209,7 @@ export default function MapaScreen() {
           markers={markers}
           user={userLoc}
           selectedId={selected?.id}
-          onMarkerPress={setSelected}
+          onMarkerPress={(m) => void handleMarkerPress(m)}
           onMapPress={clearSelection}
         />
 
@@ -208,11 +247,19 @@ export default function MapaScreen() {
         {selected ? (
           <View>
             <View style={styles.detailHeader}>
-              <View style={[styles.statusChip, { backgroundColor: kindMeta.color }]}>
-                <MaterialCommunityIcons name={kindMeta.icon} size={16} color="#fff" />
-                <Text style={styles.statusChipTextOn}>
-                  {kindMeta.label}
-                </Text>
+              <View style={styles.detailHeaderLeft}>
+                <View style={[styles.statusChip, { backgroundColor: kindMeta.color }]}>
+                  <MaterialCommunityIcons name={kindMeta.icon} size={16} color="#fff" />
+                  <Text style={styles.statusChipTextOn}>{kindMeta.label}</Text>
+                </View>
+                {selected.kind === "ecoponto" && formatDistance(selected.distanceM) ? (
+                  <View style={styles.distanceChip}>
+                    <Ionicons name="navigate" size={14} color={colors.cta} />
+                    <Text style={styles.distanceText}>
+                      {formatDistance(selected.distanceM)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <Pressable
                 onPress={clearSelection}
@@ -223,6 +270,35 @@ export default function MapaScreen() {
                 <Ionicons name="close" size={22} color={colors.textMuted} />
               </Pressable>
             </View>
+
+            {selected.kind === "ecoponto" ? (
+              <View style={styles.navRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
+                  onPress={() => openGoogleMaps(selected.lat, selected.lng)}
+                  accessibilityLabel="Abrir no Google Maps"
+                >
+                  <Image
+                    source={require("@/assets/images/icons/google-maps.png")}
+                    style={styles.navIcon}
+                    contentFit="contain"
+                  />
+                  <Text style={styles.navLabel}>Maps</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
+                  onPress={() => openWaze(selected.lat, selected.lng)}
+                  accessibilityLabel="Abrir no Waze"
+                >
+                  <Image
+                    source={require("@/assets/images/icons/waze.png")}
+                    style={styles.navIcon}
+                    contentFit="contain"
+                  />
+                  <Text style={styles.navLabel}>Waze</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             {selected.kind !== "ecoponto" && (selected.photoUrls?.length || selected.photoUrl) ? (
               <ScrollView
@@ -363,19 +439,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   brandWrap: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    backgroundColor: "#fafafa",
+    borderRadius: 6,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   brandLetter: {
-    width: 176,
-    height: 46,
+    width: 148,
+    height: 38,
   },
   errorBanner: {
     position: "absolute",
@@ -476,6 +552,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 12,
   },
+  detailHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    flexWrap: "wrap",
+  },
   statusChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -488,6 +571,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#fff",
+  },
+  distanceChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.ctaSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  distanceText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.cta,
+  },
+  navRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  navBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.bg,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
+  navBtnPressed: {
+    backgroundColor: colors.ctaSoft,
+  },
+  navIcon: {
+    width: 28,
+    height: 28,
+  },
+  navLabel: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.text,
   },
   closeBtn: {
     width: 36,

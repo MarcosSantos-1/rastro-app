@@ -28,6 +28,7 @@ export type RastroMapMarker = {
   createdAt?: string;
   endereco?: string;
   statusLabel?: string;
+  distanceM?: number;
 };
 
 export type RastroNativeMapProps = {
