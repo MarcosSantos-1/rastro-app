@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, StyleSheet, View } from "react-native";
 import { colors } from "@/constants/colors";
 
@@ -7,7 +7,7 @@ const LOGO_W = Math.min(width * 0.5, 220);
 
 type Props = {
   visible: boolean;
-  /** When false, stays mounted and fades out instead of unmounting immediately. */
+  /** When false, unmounts immediately instead of fading. */
   fadeOut?: boolean;
 };
 
@@ -18,7 +18,8 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
-  const shown = useRef(visible);
+  /** State (não ref): com fadeOut=false o ref sozinho não disparava re-render e o overlay ficava eterno. */
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -54,26 +55,24 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
 
   useEffect(() => {
     if (visible) {
-      shown.current = true;
+      setMounted(true);
       opacity.setValue(1);
       return;
     }
     if (!fadeOut) {
-      shown.current = false;
+      setMounted(false);
       return;
     }
-    if (shown.current) {
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 350,
-        useNativeDriver: true,
-      }).start(() => {
-        shown.current = false;
-      });
-    }
+    Animated.timing(opacity, {
+      toValue: 0,
+      duration: 350,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setMounted(false);
+    });
   }, [visible, fadeOut, opacity]);
 
-  if (!shown.current && !visible) return null;
+  if (!mounted) return null;
 
   return (
     <Animated.View

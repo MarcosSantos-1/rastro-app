@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import * as Location from "expo-location";
@@ -6,6 +7,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +23,7 @@ import {
 import { BrandedLoading } from "@/components/BrandedLoading";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
-import { distanceMeters } from "@/lib/geo";
+import { distanceMeters, withTimeout } from "@/lib/geo";
 import {
   hasSeenEcopontosIntro,
   setPendingEcoponto,
@@ -74,30 +76,8 @@ function openWaze(lat: number, lng: number) {
   void Linking.openURL(url);
 }
 
-async function loadMarkersNear(lat: number, lng: number): Promise<RastroMapMarker[]> {
-  const denuncias = await listDenunciasNear(lat, lng, MAP_RADIUS_M);
-  const denMarkers: RastroMapMarker[] = denuncias.map((d) => {
-    // Pós-IA: validada = ainda pendente no mapa; roteada = resolvido/encaminhado
-    const kind = d.status === "roteada" ? "resolvido" : "pendente";
-    const categoriaLabel =
-      CATEGORIA_LABEL[d.categoria as DenunciaCategoria] ?? d.categoria;
-    return {
-      id: `d-${d.id}`,
-      lat: d.lat,
-      lng: d.lng,
-      kind,
-      title: d.endereco || categoriaLabel,
-      photoUrl: d.fotoUrl ?? d.fotoUrls?.[0],
-      photoUrls: d.fotoUrls?.length ? d.fotoUrls : d.fotoUrl ? [d.fotoUrl] : undefined,
-      categoria: categoriaLabel,
-      createdAt: d.createdAt,
-      endereco: d.endereco,
-      statusLabel: STATUS_LABEL[d.status] ?? d.status,
-      distanceM: d.distanceM,
-    };
-  });
-
-  const ecoMarkers: RastroMapMarker[] = ECOPONTOS.filter(
+function ecoMarkersNear(lat: number, lng: number): RastroMapMarker[] {
+  return ECOPONTOS.filter(
     (e) => distanceMeters(lat, lng, e.lat, e.lng) <= ECOPONTO_RADIUS_M,
   ).map((e) => ({
     id: `e-${e.id}`,
@@ -110,8 +90,73 @@ async function loadMarkersNear(lat: number, lng: number): Promise<RastroMapMarke
     categoria: "Ponto de coleta",
     distanceM: distanceMeters(lat, lng, e.lat, e.lng),
   }));
+}
 
-  return [...ecoMarkers, ...denMarkers];
+async function loadMarkersNear(
+  lat: number,
+  lng: number,
+): Promise<{ markers: RastroMapMarker[]; firestoreOk: boolean }> {
+  const ecoMarkers = ecoMarkersNear(lat, lng);
+  try {
+    const denuncias = await listDenunciasNear(lat, lng, MAP_RADIUS_M);
+    const denMarkers: RastroMapMarker[] = denuncias.map((d) => {
+      // Pós-IA: validada = ainda pendente no mapa; roteada = resolvido/encaminhado
+      const kind = d.status === "roteada" ? "resolvido" : "pendente";
+      const categoriaLabel =
+        CATEGORIA_LABEL[d.categoria as DenunciaCategoria] ?? d.categoria;
+      return {
+        id: `d-${d.id}`,
+        lat: d.lat,
+        lng: d.lng,
+        kind,
+        title: d.endereco || categoriaLabel,
+        photoUrl: d.fotoUrl ?? d.fotoUrls?.[0],
+        photoUrls: d.fotoUrls?.length ? d.fotoUrls : d.fotoUrl ? [d.fotoUrl] : undefined,
+        categoria: categoriaLabel,
+        createdAt: d.createdAt,
+        endereco: d.endereco,
+        statusLabel: STATUS_LABEL[d.status] ?? d.status,
+        distanceM: d.distanceM,
+      };
+    });
+    return { markers: [...ecoMarkers, ...denMarkers], firestoreOk: true };
+  } catch {
+    return { markers: ecoMarkers, firestoreOk: false };
+  }
+}
+
+/** 1ª conexão Firestore no iOS costuma falhar; Auth precisa estar pronto antes. */
+async function loadMarkersNearWithRetry(
+  lat: number,
+  lng: number,
+  attempts = 3,
+): Promise<{ markers: RastroMapMarker[]; firestoreOk: boolean }> {
+  let last = await loadMarkersNear(lat, lng);
+  for (let i = 1; i < attempts && !last.firestoreOk; i++) {
+    await new Promise((r) => setTimeout(r, 900 * i));
+    last = await loadMarkersNear(lat, lng);
+  }
+  return last;
+}
+
+async function resolveUserLocation(): Promise<{ lat: number; lng: number }> {
+  try {
+    // High no iOS às vezes nunca retorna; Balanced + timeout evita loading infinito.
+    const pos = await withTimeout(
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      }),
+      10_000,
+      "GPS",
+    );
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch {
+    const last = await Location.getLastKnownPositionAsync();
+    if (last) {
+      return { lat: last.coords.latitude, lng: last.coords.longitude };
+    }
+    throw new Error("GPS indisponível");
+  }
 }
 
 export default function MapaScreen() {
@@ -119,14 +164,25 @@ export default function MapaScreen() {
   const mapRef = useRef<RastroNativeMapHandle>(null);
   const { ensureAnonymous, ready } = useAuth();
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  /** Monta o MapView cedo (FALLBACK) para o Google Maps SDK inicializar sob o overlay. */
+  const [mapSeed, setMapSeed] = useState<{ lat: number; lng: number }>(FALLBACK);
+  const [mapKey, setMapKey] = useState("boot");
   const [markers, setMarkers] = useState<RastroMapMarker[]>([]);
   const [selected, setSelected] = useState<RastroMapMarker | null>(null);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const center = userLoc ?? FALLBACK;
   const activeCount = markers.filter((m) => m.kind === "pendente").length;
+
+  const mapsKeyInBinary = Boolean(
+    (
+      (Constants.expoConfig?.extra as { googleMapsApiKey?: string } | undefined)
+        ?.googleMapsApiKey ||
+      process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      ""
+    ).trim(),
+  );
 
   const clearSelection = useCallback(() => {
     setSelected(null);
@@ -149,39 +205,61 @@ export default function MapaScreen() {
     setLoading(true);
     setError(null);
     try {
-      await ensureAnonymous();
+      try {
+        await withTimeout(ensureAnonymous(), 12_000, "Auth");
+      } catch {
+        /* retry Firestore abaixo */
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
+        setUserLoc(FALLBACK);
+        setMapSeed(FALLBACK);
+        setMarkers(ecoMarkersNear(FALLBACK.lat, FALLBACK.lng));
         setError("Permita a localização para ver o mapa da sua região.");
-        setLoading(false);
         return;
       }
 
-      const last = await Location.getLastKnownPositionAsync();
-      if (last) {
-        const lat = last.coords.latitude;
-        const lng = last.coords.longitude;
-        setUserLoc({ lat, lng });
-        try {
-          setMarkers(await loadMarkersNear(lat, lng));
-        } catch {
-          /* refine abaixo com GPS atual */
-        }
+      let loc: { lat: number; lng: number };
+      try {
+        loc = await resolveUserLocation();
+      } catch {
+        loc = FALLBACK;
+        setError("Não deu para obter o GPS. Mostrando centro de SP.");
       }
 
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      setUserLoc({ lat, lng });
-      setMarkers(await loadMarkersNear(lat, lng));
+      setUserLoc(loc);
+      setMapSeed(loc);
+      setMapKey((k) =>
+        k === "boot" ? `${loc.lat.toFixed(3)}_${loc.lng.toFixed(3)}` : k,
+      );
+
+      const { markers: nextMarkers, firestoreOk } = await loadMarkersNearWithRetry(
+        loc.lat,
+        loc.lng,
+      );
+      setMarkers(nextMarkers);
+      if (!firestoreOk) {
+        setError(
+          "Sem conexão com o Firebase no momento. Mapa e ecopontos ok; toque em tentar de novo para os registros.",
+        );
+      } else if (Platform.OS === "android" && !mapsKeyInBinary) {
+        setError(
+          "Google Maps: API key ausente neste APK. Rebuild com EXPO_PUBLIC_GOOGLE_MAPS_API_KEY no EAS.",
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar o mapa");
+      setUserLoc((prev) => prev ?? FALLBACK);
+      setMarkers((prev) =>
+        prev.length ? prev : ecoMarkersNear(FALLBACK.lat, FALLBACK.lng),
+      );
     } finally {
+      // Não espera onMapReady: no APK Android ele às vezes nunca dispara sob overlay
+      // (mapa em branco ≠ loading infinito). Tiles carregam com o MapView já montado.
       setLoading(false);
     }
-  }, [ensureAnonymous]);
+  }, [ensureAnonymous, mapsKeyInBinary]);
 
   useFocusEffect(
     useCallback(() => {
@@ -203,9 +281,10 @@ export default function MapaScreen() {
     <View style={styles.root}>
       <View style={styles.mapWrap}>
         <RastroNativeMap
+          key={mapKey}
           ref={mapRef}
-          centerLat={center.lat}
-          centerLng={center.lng}
+          centerLat={mapSeed.lat}
+          centerLng={mapSeed.lng}
           markers={markers}
           user={userLoc}
           selectedId={selected?.id}
@@ -216,14 +295,14 @@ export default function MapaScreen() {
         <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
           <View style={styles.brandWrap}>
             <Image
-              source={require("@/assets/images/rastro_letter.png")}
+              source={require("@/assets/images/rastro_letter_padded.png")}
               style={styles.brandLetter}
               contentFit="contain"
             />
           </View>
         </View>
 
-        {error ? (
+        {error && !loading ? (
           <View style={[styles.errorBanner, { top: insets.top + 64 }]}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable onPress={() => void refresh()}>
@@ -441,8 +520,8 @@ const styles = StyleSheet.create({
   brandWrap: {
     backgroundColor: "#fafafa",
     borderRadius: 6,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 4,

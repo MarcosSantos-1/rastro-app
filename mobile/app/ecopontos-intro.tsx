@@ -40,7 +40,7 @@ export default function EcopontosIntroScreen() {
         ]}
       >
         <Image
-          source={require("@/assets/images/rastro_letter_white.png")}
+          source={require("@/assets/images/rastro_letter_white_padded.png")}
           style={styles.logo}
           contentFit="contain"
         />

@@ -1,10 +1,11 @@
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack, usePathname, useRouter, useRootNavigationState } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, type ReactNode } from "react";
 import "react-native-reanimated";
 
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { BrandedLoading } from "@/components/BrandedLoading";
 import { colors } from "@/constants/colors";
 import {
@@ -13,48 +14,71 @@ import {
 } from "@/lib/onboarding";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/**
+ * Gate enxuto: lê AsyncStorage, manda pra /onboarding se preciso, e libera a UI.
+ * Não depende de navState.key (travava no APK) nem de Auth Firebase.
+ */
 function OnboardingGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const navState = useRootNavigationState();
-  const [ready, setReady] = useState(false);
+  const [booting, setBooting] = useState(true);
   const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      const completed = await isOnboardingCompleted();
-      if (!alive) return;
-      setDone(completed);
-      setReady(true);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   useEffect(() => subscribeOnboarding(setDone), []);
 
   useEffect(() => {
-    if (!ready || !navState?.key) return;
-    if (done) return;
-    if (pathname === "/onboarding") return;
-    router.replace("/onboarding");
-  }, [ready, done, pathname, navState?.key, router]);
+    let alive = true;
+    void (async () => {
+      let completed = false;
+      try {
+        completed = await isOnboardingCompleted();
+      } catch {
+        completed = false;
+      }
+      if (!alive) return;
+      setDone(completed);
+      setBooting(false);
+      void SplashScreen.hideAsync().catch(() => {});
 
-  const blocking = !ready || (!done && pathname !== "/onboarding");
+      if (!completed) {
+        try {
+          router.replace("/onboarding");
+        } catch {
+          /* index Redirect cobre */
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [router]);
+
+  // Se ainda não completou e ainda não estamos no onboarding, mantém overlay
+  // só até a rota chegar (máx ~1s) — nunca infinito.
+  const [routeWaitDone, setRouteWaitDone] = useState(false);
+  useEffect(() => {
+    if (booting || done || pathname === "/onboarding") {
+      setRouteWaitDone(true);
+      return;
+    }
+    setRouteWaitDone(false);
+    const t = setTimeout(() => setRouteWaitDone(true), 1000);
+    return () => clearTimeout(t);
+  }, [booting, done, pathname]);
+
+  const showOverlay = booting || (!done && pathname !== "/onboarding" && !routeWaitDone);
 
   return (
     <>
       {children}
-      <BrandedLoading visible={blocking} />
+      <BrandedLoading visible={showOverlay} fadeOut={false} />
     </>
   );
 }
 
 function AppShell() {
-  const { ready } = useAuth();
-
   return (
     <OnboardingGuard>
       <ThemeProvider value={DefaultTheme}>
@@ -103,7 +127,6 @@ function AppShell() {
           />
         </Stack>
       </ThemeProvider>
-      <BrandedLoading visible={!ready} />
     </OnboardingGuard>
   );
 }

@@ -1,10 +1,14 @@
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { BrandedLoading } from "@/components/BrandedLoading";
+import { colors } from "@/constants/colors";
 import { isOnboardingCompleted } from "@/lib/onboarding";
 
-/** Gate: onboarding uma vez; depois abre nas tabs (Início). */
+/**
+ * Gate mínimo: fundo sólido enquanto lê o storage.
+ * O overlay do root (_layout) cobre qualquer flash — aqui não montamos as tabs
+ * até saber se o onboarding já foi feito.
+ */
 export default function IndexGate() {
   const [ready, setReady] = useState(false);
   const [done, setDone] = useState(false);
@@ -23,11 +27,7 @@ export default function IndexGate() {
   }, []);
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1 }}>
-        <BrandedLoading visible />
-      </View>
-    );
+    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
 
   return <Redirect href={done ? "/(tabs)" : "/onboarding"} />;

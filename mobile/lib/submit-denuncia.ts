@@ -11,7 +11,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { Image } from "react-native";
 import type { DenunciaCategoria, DenunciaDoc } from "@/lib/denuncias";
 import { DENUNCIAS_COLLECTION, isDenunciaAtiva, parseDenunciaDoc } from "@/lib/denuncias";
-import { distanceMeters } from "@/lib/geo";
+import { distanceMeters, withTimeout } from "@/lib/geo";
 import { auth, db } from "@/lib/firebase";
 import { uploadFotoViaApi } from "@/lib/rastro-api";
 
@@ -88,7 +88,12 @@ export async function listDenunciasNear(
   lng: number,
   radiusM = MAP_RADIUS_M,
 ) {
-  const snap = await getDocs(query(collection(db, DENUNCIAS_COLLECTION), limit(500)));
+  // No iOS/Expo Go o WebChannel às vezes nunca resolve — não deixar o mapa pendurado.
+  const snap = await withTimeout(
+    getDocs(query(collection(db, DENUNCIAS_COLLECTION), limit(500))),
+    8_000,
+    "Firestore",
+  );
   const out = [];
   for (const docSnap of snap.docs) {
     const d = parseDenunciaDoc(docSnap.id, docSnap.data() as Record<string, unknown>);

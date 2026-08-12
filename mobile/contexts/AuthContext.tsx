@@ -20,7 +20,8 @@ const Ctx = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [ready, setReady] = useState(false);
+  // Não bloqueia a UI no Auth — o boot do app não pode depender do Firebase.
+  const [ready, setReady] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -37,13 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
     if (!auth.currentUser) {
       void ensureAnonymous().catch(() => {
-        /* splash / mapa podem tentar de novo */
+        /* mapa / registro tentam de novo */
       });
     }
-  }, [ready, ensureAnonymous]);
+  }, [ensureAnonymous]);
 
   const value = useMemo(
     () => ({

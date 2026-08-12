@@ -23,7 +23,7 @@ export default function SobreScreen() {
 
       <View style={styles.body}>
         <Image
-          source={require("@/assets/images/rastro_letter.png")}
+          source={require("@/assets/images/rastro_letter_padded.png")}
           style={styles.logo}
           contentFit="contain"
         />

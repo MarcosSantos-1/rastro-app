@@ -1,7 +1,19 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
+  const googleMapsApiKey =
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+    process.env.GOOGLE_MAPS_API_KEY?.trim() ||
+    // Fallback igual ao Firebase em `extra`: a key do Maps vai no APK de qualquer forma.
+    // Evita AndroidManifest sem meta-data se o env do EAS falhar na resolução do config.
+    "AIzaSyCdghUbODg0QlzEAR_9wQtEgL3D8Rvivw8";
+
+  if (!googleMapsApiKey) {
+    throw new Error(
+      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY vazia ao resolver app.config — " +
+        "defina no EAS (environment preview) e no .env local.",
+    );
+  }
 
   return {
     ...config,
@@ -22,6 +34,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "O Rastro usa a câmera para fotografar descartes irregulares e problemas de zeladoria.",
         NSPhotoLibraryUsageDescription:
           "O Rastro acessa a galeria para anexar fotos ao registro.",
+        NSLocationWhenInUseUsageDescription:
+          "O Rastro usa sua localização para mostrar ocorrências próximas e registrar denúncias georreferenciadas.",
+      },
+      config: {
+        googleMapsApiKey,
       },
     },
     android: {
@@ -56,8 +73,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-icon.png",
-          imageWidth: 280,
+          // Só fundo + letter (sem ícone adaptativo cheio). No Android 12+
+          // o SO ainda mostra o adaptive icon em círculo por um instante;
+          // em seguida o BrandedLoading cobre com o logo inteiro, sem corte.
+          image: "./assets/images/rastro_letter_splash.png",
+          imageWidth: 180,
           resizeMode: "contain",
           backgroundColor: "#f7faf8",
         },

@@ -39,6 +39,8 @@ export type RastroNativeMapProps = {
   selectedId?: string | null;
   onMarkerPress?: (marker: RastroMapMarker) => void;
   onMapPress?: () => void;
+  /** Dispara quando o MapView nativo terminou de inicializar (tiles podem ainda carregar). */
+  onMapReady?: () => void;
 };
 
 export type RastroNativeMapHandle = {
@@ -93,22 +95,34 @@ function PinMarker({ kind, photoUrl }: { kind: RastroMapMarkerKind; photoUrl?: s
 
 export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMapProps>(
   function RastroNativeMap(
-    { centerLat, centerLng, markers, user, selectedId, onMarkerPress, onMapPress },
+    {
+      centerLat,
+      centerLng,
+      markers,
+      user,
+      selectedId,
+      onMarkerPress,
+      onMapPress,
+      onMapReady,
+    },
     ref,
   ) {
     const mapRef = useRef<MapView>(null);
     const didInitialFocus = useRef(false);
+    const readyOnce = useRef(false);
     const userRef = useRef(user);
     const centerRef = useRef({ lat: centerLat, lng: centerLng });
+    const onMapReadyRef = useRef(onMapReady);
     userRef.current = user;
     centerRef.current = { lat: centerLat, lng: centerLng };
+    onMapReadyRef.current = onMapReady;
 
     /** Android precisa de um frame com tracksViewChanges=true para renderizar views custom. */
     const [tracksViewChanges, setTracksViewChanges] = useState(true);
 
+    // Monta já na região certa (pai só renderiza o mapa depois de ter loc).
     const initialRegion = useMemo(
       () => regionForRadius(centerLat, centerLng, MAP_RADIUS_M),
-      // Região inicial só na montagem — evita resetar gestos do usuário
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [],
     );
@@ -140,7 +154,8 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
     }, [markers, selectedId]);
 
     useEffect(() => {
-      if (!__DEV__ || Platform.OS !== "android") return;
+      // Sempre loga no Android release se a key não chegou no binário (mapa cinza).
+      if (Platform.OS !== "android") return;
       const extra = Constants.expoConfig?.extra as { googleMapsApiKey?: string } | undefined;
       const key =
         extra?.googleMapsApiKey?.trim() ||
@@ -148,10 +163,18 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
         "";
       if (!key) {
         console.warn(
-          "[RastroMaps] EXPO_PUBLIC_GOOGLE_MAPS_API_KEY vazia. Mapa Android fica em branco. Rode: npm run check-maps-android",
+          "[RastroMaps] Google Maps API key vazia no binário. Mapa Android fica em branco.",
         );
       }
     }, []);
+
+    const handleMapReady = () => {
+      if (readyOnce.current) return;
+      readyOnce.current = true;
+      requestAnimationFrame(() => {
+        setTimeout(() => onMapReadyRef.current?.(), Platform.OS === "ios" ? 300 : 100);
+      });
+    };
 
     return (
       <View style={styles.wrap}>
@@ -167,6 +190,10 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
           pitchEnabled={false}
           toolbarEnabled={false}
           moveOnMarkerPress={false}
+          loadingEnabled
+          loadingIndicatorColor={colors.cta}
+          loadingBackgroundColor={colors.bg}
+          onMapReady={handleMapReady}
           onPress={() => onMapPress?.()}
         >
           {markers.map((m) => {
@@ -196,8 +223,8 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
 );
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: "#0f172a" },
-  map: { flex: 1 },
+  wrap: { flex: 1, backgroundColor: colors.bg },
+  map: { ...StyleSheet.absoluteFillObject },
   pinWrap: {
     alignItems: "center",
     width: 44,

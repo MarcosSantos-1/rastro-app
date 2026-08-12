@@ -144,7 +144,7 @@ export default function OnboardingScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={require("@/assets/images/rastro_letter_white.png")}
+            source={require("@/assets/images/rastro_letter_white_padded.png")}
             style={styles.logoLetter}
             contentFit="contain"
           />
@@ -232,8 +232,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   logoLetter: {
-    width: 168,
-    height: 44,
+    width: 176,
+    height: 48,
+    marginLeft: 4,
   },
   skip: {
     fontSize: 14,

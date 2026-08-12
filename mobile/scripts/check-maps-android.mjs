@@ -54,10 +54,13 @@ console.log("Checklist GCP:");
 console.log("1. Habilitar Maps SDK for Android (Geocoding sozinho não renderiza tiles).");
 console.log("2. Restringir a key a Android apps: package com.rastro.app + SHA-1 do debug.keystore.");
 console.log("3. Billing ativo no projeto.");
-console.log("4. Após mudar a key no .env, rode de novo: npx expo prebuild --clean && npx expo run:android");
-console.log("5. Em builds EAS, defina o secret/env EXPO_PUBLIC_GOOGLE_MAPS_API_KEY no projeto.");
+console.log("4. Em builds EAS (APK), adicione também o SHA-1 do keystore preview/production:");
+console.log("     npx eas-cli credentials -p android");
+console.log("   → Keystore → SHA-1 Fingerprint + package com.rastro.app");
+console.log("5. Após mudar a key no .env: npx expo prebuild --clean && npx expo run:android");
+console.log("6. No EAS, EXPO_PUBLIC_GOOGLE_MAPS_API_KEY deve existir no environment preview.");
 console.log("");
-console.log("SHA-1 (comando local):");
+console.log("SHA-1 debug local:");
 console.log(
   '  keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android',
 );
