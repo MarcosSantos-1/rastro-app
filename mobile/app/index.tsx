@@ -30,5 +30,5 @@ export default function IndexGate() {
     );
   }
 
-  return <Redirect href={done ? "/(tabs)/index" : "/onboarding"} />;
+  return <Redirect href={done ? "/(tabs)" : "/onboarding"} />;
 }

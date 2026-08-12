@@ -3,7 +3,14 @@ import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   RastroNativeMap,
@@ -89,13 +96,17 @@ export default function MapaScreen() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [markers, setMarkers] = useState<RastroMapMarker[]>([]);
   const [selected, setSelected] = useState<RastroMapMarker | null>(null);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const center = userLoc ?? FALLBACK;
   const activeCount = markers.filter((m) => m.kind === "pendente").length;
 
-  const clearSelection = useCallback(() => setSelected(null), []);
+  const clearSelection = useCallback(() => {
+    setSelected(null);
+    setPreviewUri(null);
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -163,14 +174,13 @@ export default function MapaScreen() {
           onMapPress={clearSelection}
         />
 
-        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.brandPill}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+          <View style={styles.brandWrap}>
             <Image
-              source={require("@/assets/images/rastro-logo.png")}
-              style={styles.brandLogo}
+              source={require("@/assets/images/rastro_letter.png")}
+              style={styles.brandLetter}
               contentFit="contain"
             />
-            <Text style={styles.brandText}>Rastro</Text>
           </View>
         </View>
 
@@ -198,10 +208,10 @@ export default function MapaScreen() {
         {selected ? (
           <View>
             <View style={styles.detailHeader}>
-              <View style={[styles.statusChip, { backgroundColor: `${kindMeta.color}18` }]}>
-                <MaterialCommunityIcons name={kindMeta.icon} size={16} color={kindMeta.color} />
-                <Text style={[styles.statusChipText, { color: kindMeta.color }]}>
-                  {selected.statusLabel ?? kindMeta.label}
+              <View style={[styles.statusChip, { backgroundColor: kindMeta.color }]}>
+                <MaterialCommunityIcons name={kindMeta.icon} size={16} color="#fff" />
+                <Text style={styles.statusChipTextOn}>
+                  {kindMeta.label}
                 </Text>
               </View>
               <Pressable
@@ -222,12 +232,13 @@ export default function MapaScreen() {
               >
                 {(selected.photoUrls ?? (selected.photoUrl ? [selected.photoUrl] : [])).map(
                   (uri) => (
-                    <Image
-                      key={uri}
-                      source={{ uri }}
-                      style={styles.detailPhoto}
-                      contentFit="cover"
-                    />
+                    <Pressable key={uri} onPress={() => setPreviewUri(uri)}>
+                      <Image
+                        source={{ uri }}
+                        style={styles.detailPhoto}
+                        contentFit="cover"
+                      />
+                    </Pressable>
                   ),
                 )}
               </ScrollView>
@@ -242,8 +253,8 @@ export default function MapaScreen() {
             <View style={styles.metaList}>
               {selected.endereco || selected.title ? (
                 <View style={styles.metaRow}>
-                  <View style={styles.metaIcon}>
-                    <Ionicons name="location-outline" size={18} color={colors.cta} />
+                  <View style={[styles.metaIcon, { backgroundColor: colors.cta }]}>
+                    <Ionicons name="location" size={18} color="#fff" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.metaLabel}>Localização</Text>
@@ -256,8 +267,8 @@ export default function MapaScreen() {
 
               {selected.kind !== "ecoponto" ? (
                 <View style={styles.metaRow}>
-                  <View style={styles.metaIcon}>
-                    <Ionicons name="calendar-outline" size={18} color={colors.cta} />
+                  <View style={[styles.metaIcon, { backgroundColor: colors.cta }]}>
+                    <Ionicons name="calendar" size={18} color="#fff" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.metaLabel}>Registrado em</Text>
@@ -268,8 +279,8 @@ export default function MapaScreen() {
 
               {selected.categoria ? (
                 <View style={styles.metaRow}>
-                  <View style={styles.metaIcon}>
-                    <Ionicons name="pricetag-outline" size={18} color={colors.cta} />
+                  <View style={[styles.metaIcon, { backgroundColor: colors.cta }]}>
+                    <Ionicons name="pricetag" size={18} color="#fff" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.metaLabel}>Categoria</Text>
@@ -277,27 +288,7 @@ export default function MapaScreen() {
                   </View>
                 </View>
               ) : null}
-
-              <View style={styles.metaRow}>
-                <View style={styles.metaIcon}>
-                  <MaterialCommunityIcons
-                    name={kindMeta.icon}
-                    size={18}
-                    color={kindMeta.color}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.metaLabel}>Status</Text>
-                  <Text style={styles.metaValue}>
-                    {selected.statusLabel ?? kindMeta.label}
-                  </Text>
-                </View>
-              </View>
             </View>
-
-            <Pressable onPress={clearSelection} style={styles.dismissHint}>
-              <Text style={styles.dismissHintText}>Toque fora ou no X para fechar</Text>
-            </Pressable>
           </View>
         ) : (
           <View style={styles.sheetHeader}>
@@ -326,6 +317,29 @@ export default function MapaScreen() {
       </View>
 
       <BrandedLoading visible={loading} />
+
+      <Modal
+        visible={!!previewUri}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewUri(null)}
+      >
+        <View style={styles.previewRoot}>
+          <Pressable style={styles.previewBackdrop} onPress={() => setPreviewUri(null)} />
+          <View style={[styles.previewHeader, { paddingTop: insets.top + 8 }]}>
+            <Pressable
+              style={styles.previewClose}
+              onPress={() => setPreviewUri(null)}
+              accessibilityLabel="Fechar foto"
+            >
+              <Ionicons name="close" size={24} color="#fff" />
+            </Pressable>
+          </View>
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.previewImage} contentFit="contain" />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -348,29 +362,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
   },
-  brandPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: colors.bgElevated,
-    paddingHorizontal: 16,
+  brandWrap: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 999,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
-  brandLogo: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
-  },
-  brandText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: colors.cta,
+  brandLetter: {
+    width: 176,
+    height: 46,
   },
   errorBanner: {
     position: "absolute",
@@ -479,9 +484,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  statusChipText: {
+  statusChipTextOn: {
     fontSize: 13,
     fontWeight: "700",
+    color: "#fff",
   },
   closeBtn: {
     width: 36,
@@ -519,7 +525,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: colors.ctaSoft,
+    backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -535,12 +541,33 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 20,
   },
-  dismissHint: {
-    marginTop: 14,
-    alignItems: "center",
+  previewRoot: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center",
   },
-  dismissHintText: {
-    fontSize: 12,
-    color: colors.textMuted,
+  previewBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  previewHeader: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    left: 0,
+    zIndex: 2,
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+  },
+  previewClose: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: "80%",
   },
 });

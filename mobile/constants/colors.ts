@@ -1,6 +1,6 @@
 /** Tokens visuais Rastro (cidadao), alinhados ao prototipo template. */
 export const colors = {
-  bg: "#e8f7f0",
+  bg: "#f7faf8",
   bgElevated: "#ffffff",
   text: "#1a2e24",
   textMuted: "#6b7f74",

@@ -27,12 +27,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       icon: "./assets/images/icon.png",
       adaptiveIcon: {
-        backgroundColor: "#e8f7f0",
+        backgroundColor: "#f7faf8",
         foregroundImage: "./assets/images/android-icon-foreground.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      allowBackup: false,
       permissions: [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
@@ -58,7 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           image: "./assets/images/splash-icon.png",
           imageWidth: 280,
           resizeMode: "contain",
-          backgroundColor: "#e8f7f0",
+          backgroundColor: "#f7faf8",
         },
       ],
       [

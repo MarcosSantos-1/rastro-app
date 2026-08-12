@@ -73,6 +73,7 @@ export default function OnboardingScreen() {
   const [busy, setBusy] = useState(false);
 
   const isLast = index === SLIDES.length - 1;
+  const slide = SLIDES[index];
 
   const finish = useCallback(async () => {
     if (busy) return;
@@ -82,7 +83,7 @@ export default function OnboardingScreen() {
       await Location.requestForegroundPermissionsAsync();
       await ImagePicker.requestCameraPermissionsAsync();
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-      router.replace("/(tabs)/index");
+      router.replace("/(tabs)");
     } finally {
       setBusy(false);
     }
@@ -138,18 +139,15 @@ export default function OnboardingScreen() {
       />
 
       <View
-        style={[styles.overlay, { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) + 8 }]}
+        style={[styles.overlay, { paddingTop: insets.top + 10 }]}
         pointerEvents="box-none"
       >
         <View style={styles.header}>
-          <View style={styles.brand}>
-            <Image
-              source={require("@/assets/images/rastro-white.png")}
-              style={styles.logo}
-              contentFit="contain"
-            />
-            <Text style={styles.brandText}>Rastro</Text>
-          </View>
+          <Image
+            source={require("@/assets/images/rastro_letter_white.png")}
+            style={styles.logoLetter}
+            contentFit="contain"
+          />
           {!isLast ? (
             <Pressable onPress={() => void finish()} hitSlop={12} disabled={busy}>
               <Text style={styles.skip}>Pular</Text>
@@ -159,17 +157,15 @@ export default function OnboardingScreen() {
           )}
         </View>
 
-        <View style={styles.footer}>
-          <View style={styles.dots}>
-            {SLIDES.map((s, i) => (
-              <View key={s.key} style={[styles.dot, i === index && styles.dotActive]} />
-            ))}
-          </View>
-
-          <Text style={styles.title}>{SLIDES[index].title}</Text>
-          <Text style={styles.body}>{SLIDES[index].description}</Text>
-
-          {isLast ? (
+        {isLast ? (
+          <View
+            style={[
+              styles.lastFooter,
+              { paddingBottom: Math.max(insets.bottom, 16) + 16 },
+            ]}
+          >
+            <Text style={styles.lastTitle}>{slide.title}</Text>
+            <Text style={styles.lastBody}>{slide.description}</Text>
             <Pressable
               style={({ pressed }) => [
                 styles.btn,
@@ -181,10 +177,27 @@ export default function OnboardingScreen() {
             >
               <Text style={styles.btnText}>{busy ? "Abrindo…" : "Começar agora"}</Text>
             </Pressable>
-          ) : (
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.card,
+              { paddingBottom: Math.max(insets.bottom, 16) + 16 },
+            ]}
+          >
+            <View style={styles.dots}>
+              {SLIDES.map((s, i) => (
+                <View
+                  key={s.key}
+                  style={[styles.dot, i === index && styles.dotActive]}
+                />
+              ))}
+            </View>
+            <Text style={styles.cardTitle}>{slide.title}</Text>
+            <Text style={styles.cardBody}>{slide.description}</Text>
             <Text style={styles.swipeHint}>Deslize para continuar</Text>
-          )}
-        </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -206,81 +219,98 @@ const styles = StyleSheet.create({
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10, 24, 18, 0.42)",
+    backgroundColor: "rgba(10, 24, 18, 0.14)",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "space-between",
-    paddingHorizontal: 24,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 22,
   },
-  brand: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  logo: {
-    width: 28,
-    height: 28,
-  },
-  brandText: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#ffffff",
+  logoLetter: {
+    width: 168,
+    height: 44,
   },
   skip: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.85)",
+    fontWeight: "700",
+    color: "#ffffff",
   },
   skipPlaceholder: {
-    width: 40,
+    width: 48,
   },
-  footer: {
-    paddingBottom: 8,
+  card: {
+    backgroundColor: colors.bgElevated,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingHorizontal: 28,
+    paddingTop: 22,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 12,
   },
   dots: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(42, 146, 93, 0.25)",
   },
   dotActive: {
     width: 24,
     backgroundColor: colors.cta,
   },
-  title: {
-    fontSize: 28,
+  cardTitle: {
+    fontSize: 24,
     fontWeight: "800",
-    color: "#ffffff",
+    color: colors.text,
     textAlign: "center",
   },
-  body: {
-    marginTop: 10,
-    fontSize: 15,
+  cardBody: {
+    marginTop: 8,
+    fontSize: 14,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.88)",
+    color: colors.textMuted,
     textAlign: "center",
     alignSelf: "center",
     maxWidth: 320,
   },
   swipeHint: {
-    marginTop: 28,
+    marginTop: 22,
     textAlign: "center",
     fontSize: 13,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.65)",
+    color: colors.textMuted,
+  },
+  lastFooter: {
+    paddingHorizontal: 28,
+  },
+  lastTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#ffffff",
+    textAlign: "center",
+  },
+  lastBody: {
+    marginTop: 10,
+    fontSize: 15,
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    alignSelf: "center",
+    maxWidth: 320,
   },
   btn: {
     marginTop: 24,

@@ -2,9 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   Pressable,
@@ -12,7 +12,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,13 +31,14 @@ type SettingsRowProps = {
   hint?: string;
   onPress?: () => void;
   right?: ReactNode;
+  last?: boolean;
 };
 
-function SettingsRow({ icon, label, hint, onPress, right }: SettingsRowProps) {
+function SettingsRow({ icon, label, hint, onPress, right, last }: SettingsRowProps) {
   const content = (
     <>
       <View style={styles.rowIcon}>
-        <Ionicons name={icon} size={20} color={colors.cta} />
+        <Ionicons name={icon} size={20} color="#fff" />
       </View>
       <View style={styles.rowCopy}>
         <Text style={styles.rowLabel}>{label}</Text>
@@ -49,11 +49,14 @@ function SettingsRow({ icon, label, hint, onPress, right }: SettingsRowProps) {
   );
 
   if (!onPress) {
-    return <View style={styles.row}>{content}</View>;
+    return <View style={[styles.row, last && styles.rowLast]}>{content}</View>;
   }
 
   return (
-    <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.row, last && styles.rowLast, pressed && styles.rowPressed]}
+      onPress={onPress}
+    >
       {content}
     </Pressable>
   );
@@ -61,11 +64,15 @@ function SettingsRow({ icon, label, hint, onPress, right }: SettingsRowProps) {
 
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const [profile, setProfile] = useState<OptionalProfile>({});
-  const [editing, setEditing] = useState(false);
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
   const [notifications, setNotifications] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, []),
+  );
 
   useEffect(() => {
     void (async () => {
@@ -74,31 +81,10 @@ export default function PerfilScreen() {
         if (!raw) return;
         const parsed = JSON.parse(raw) as OptionalProfile;
         setProfile(parsed);
-        setNome(parsed.nome ?? "");
-        setEmail(parsed.email ?? "");
       } catch {
         /* ignore */
       }
     })();
-  }, []);
-
-  const saveProfile = useCallback(async () => {
-    const next = {
-      nome: nome.trim() || undefined,
-      email: email.trim() || undefined,
-    };
-    await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next));
-    setProfile(next);
-    setEditing(false);
-    Alert.alert("Salvo", "Seus dados opcionais foram guardados só neste aparelho.");
-  }, [email, nome]);
-
-  const clearProfile = useCallback(async () => {
-    await AsyncStorage.removeItem(PROFILE_KEY);
-    setProfile({});
-    setNome("");
-    setEmail("");
-    setEditing(false);
   }, []);
 
   const openPlaceholder = (title: string) => {
@@ -109,189 +95,146 @@ export default function PerfilScreen() {
     Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "1.0.0";
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.screenTitle}>Perfil</Text>
-      <Text style={styles.screenHint}>
-        Tudo aqui é opcional. Use só se quiser guardar preferências ou consultar depois.
-      </Text>
-
+    <View style={styles.root}>
       <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 32 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={32} color={colors.cta} />
-          </View>
-          {editing ? (
-            <View style={styles.form}>
-              <Text style={styles.fieldLabel}>Nome (opcional)</Text>
-              <TextInput
-                style={styles.input}
-                value={nome}
-                onChangeText={setNome}
-                placeholder="Como podemos te chamar?"
-                placeholderTextColor={colors.textMuted}
-              />
-              <Text style={styles.fieldLabel}>E-mail (opcional)</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="para@exemplo.com"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <View style={styles.formActions}>
-                <Pressable
-                  style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.9 }]}
-                  onPress={() => void saveProfile()}
-                >
-                  <Text style={styles.saveBtnText}>Salvar</Text>
-                </Pressable>
-                <Pressable onPress={() => setEditing(false)}>
-                  <Text style={styles.cancelText}>Cancelar</Text>
-                </Pressable>
-              </View>
+        <View style={[styles.hero, { paddingTop: insets.top + 20 }]}>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={40} color={colors.cta} />
             </View>
-          ) : (
-            <>
-              <Text style={styles.userName}>{profile.nome || "Visitante anônimo"}</Text>
-              <Text style={styles.userEmail}>
-                {profile.email || "Nenhum dado salvo neste aparelho"}
-              </Text>
-              <View style={styles.profileActions}>
-                <Pressable
-                  style={({ pressed }) => [styles.outlineBtn, pressed && { opacity: 0.85 }]}
-                  onPress={() => setEditing(true)}
-                >
-                  <Text style={styles.outlineBtnText}>
-                    {profile.nome || profile.email ? "Editar dados" : "Salvar meus dados"}
-                  </Text>
-                </Pressable>
-                {profile.nome || profile.email ? (
-                  <Pressable onPress={() => void clearProfile()}>
-                    <Text style={styles.clearText}>Limpar</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </>
-          )}
+          </View>
+
+          <Text style={styles.userName}>{profile.nome || "Visitante anônimo"}</Text>
+          <Text style={styles.userEmail}>
+            {profile.email || "Entre para salvar suas ocorrências"}
+          </Text>
+          <View style={styles.profileActions}>
+            <Pressable
+              style={({ pressed }) => [styles.outlineBtn, pressed && { opacity: 0.85 }]}
+              onPress={() => router.push("/login")}
+            >
+              <Text style={styles.outlineBtnText}>Fazer login</Text>
+            </Pressable>
+          </View>
         </View>
 
-        <Text style={styles.section}>Preferências</Text>
-        <View style={styles.group}>
-          <SettingsRow
-            icon="notifications-outline"
-            label="Notificações"
-            hint="Avisos sobre status de ocorrências"
-            right={
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{ false: colors.border, true: colors.cta }}
-                thumbColor="#fff"
-              />
-            }
-          />
-          <SettingsRow
-            icon="language-outline"
-            label="Idioma"
-            hint="Português (Brasil)"
-            onPress={() => openPlaceholder("Idioma")}
-          />
-          <SettingsRow
-            icon="settings-outline"
-            label="Configurações"
-            hint="Localização, câmera e armazenamento"
-            onPress={() =>
-              Alert.alert(
-                "Configurações",
-                "Abra as configurações do sistema para gerenciar permissões do Rastro.",
-                [
+        <View style={styles.body}>
+          <Text style={styles.section}>Preferências</Text>
+          <View style={styles.group}>
+            <SettingsRow
+              icon="notifications"
+              label="Notificações"
+              hint="Avisos sobre status de ocorrências"
+              right={
+                <Switch
+                  value={notifications}
+                  onValueChange={setNotifications}
+                  trackColor={{ false: colors.border, true: colors.cta }}
+                  thumbColor="#fff"
+                />
+              }
+            />
+            <SettingsRow
+              icon="language"
+              label="Idioma"
+              hint="Português (Brasil)"
+              onPress={() => openPlaceholder("Idioma")}
+            />
+            <SettingsRow
+              icon="settings"
+              label="Configurações"
+              hint="Localização, câmera e armazenamento"
+              last
+              onPress={() =>
+                Alert.alert(
+                  "Configurações",
+                  "Abra as configurações do sistema para gerenciar permissões do Rastro.",
+                  [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                      text: "Abrir",
+                      onPress: () => void Linking.openSettings(),
+                    },
+                  ],
+                )
+              }
+            />
+          </View>
+
+          <Text style={styles.section}>Suporte e legal</Text>
+          <View style={styles.group}>
+            <SettingsRow
+              icon="document-text"
+              label="Termos de uso"
+              onPress={() => router.push("/termos")}
+            />
+            <SettingsRow
+              icon="shield-checkmark"
+              label="Política de privacidade"
+              onPress={() => router.push("/privacidade")}
+            />
+            <SettingsRow
+              icon="chatbubbles"
+              label="Enviar feedback"
+              hint="Conte o que podemos melhorar"
+              onPress={() =>
+                void Linking.openURL(
+                  "mailto:contato@rastro.app?subject=Feedback%20Rastro",
+                ).catch(() => openPlaceholder("Feedback"))
+              }
+            />
+            <SettingsRow
+              icon="star"
+              label="Avaliar o app"
+              hint="Rate us na loja"
+              onPress={() => openPlaceholder("Avaliar o app")}
+            />
+            <SettingsRow
+              icon="help-circle"
+              label="Central de ajuda"
+              last
+              onPress={() =>
+                void WebBrowser.openBrowserAsync("https://rastro.app").catch(() =>
+                  openPlaceholder("Ajuda"),
+                )
+              }
+            />
+          </View>
+
+          <Text style={styles.section}>Sobre</Text>
+          <View style={styles.group}>
+            <SettingsRow
+              icon="information-circle"
+              label="Sobre o Rastro"
+              hint={`Versão ${version}`}
+              onPress={() => router.push("/sobre")}
+            />
+            <SettingsRow
+              icon="images"
+              label="Ver introdução"
+              hint="Mostrar o onboarding de novo"
+              last
+              onPress={() => {
+                Alert.alert("Ver introdução", "Deseja ver as telas iniciais outra vez?", [
                   { text: "Cancelar", style: "cancel" },
                   {
-                    text: "Abrir",
-                    onPress: () => void Linking.openSettings(),
+                    text: "Ver",
+                    onPress: () => {
+                      void (async () => {
+                        await clearOnboardingCompleted();
+                        router.replace("/onboarding");
+                      })();
+                    },
                   },
-                ],
-              )
-            }
-          />
-        </View>
-
-        <Text style={styles.section}>Suporte e legal</Text>
-        <View style={styles.group}>
-          <SettingsRow
-            icon="document-text-outline"
-            label="Termos de uso"
-            onPress={() => openPlaceholder("Termos de uso")}
-          />
-          <SettingsRow
-            icon="shield-checkmark-outline"
-            label="Política de privacidade"
-            onPress={() => openPlaceholder("Política de privacidade")}
-          />
-          <SettingsRow
-            icon="chatbubble-ellipses-outline"
-            label="Enviar feedback"
-            hint="Conte o que podemos melhorar"
-            onPress={() =>
-              void Linking.openURL(
-                "mailto:contato@rastro.app?subject=Feedback%20Rastro",
-              ).catch(() => openPlaceholder("Feedback"))
-            }
-          />
-          <SettingsRow
-            icon="star-outline"
-            label="Avaliar o app"
-            hint="Rate us na loja"
-            onPress={() => openPlaceholder("Avaliar o app")}
-          />
-          <SettingsRow
-            icon="help-circle-outline"
-            label="Central de ajuda"
-            onPress={() =>
-              void WebBrowser.openBrowserAsync("https://rastro.app").catch(() =>
-                openPlaceholder("Ajuda"),
-              )
-            }
-          />
-        </View>
-
-        <Text style={styles.section}>Sobre</Text>
-        <View style={styles.group}>
-          <SettingsRow
-            icon="information-circle-outline"
-            label="Sobre o Rastro"
-            hint={`Versão ${version}`}
-            onPress={() =>
-              Alert.alert(
-                "Rastro",
-                "App cidadão para registrar descartes irregulares e apoiar a zeladoria urbana com geolocalização e IA.",
-              )
-            }
-          />
-          <SettingsRow
-            icon="images-outline"
-            label="Ver introdução"
-            hint="Mostrar o onboarding de novo"
-            onPress={() => {
-              Alert.alert("Ver introdução", "Deseja ver as telas iniciais outra vez?", [
-                { text: "Cancelar", style: "cancel" },
-                {
-                  text: "Ver",
-                  onPress: () => {
-                    void (async () => {
-                      await clearOnboardingCompleted();
-                      router.replace("/onboarding");
-                    })();
-                  },
-                },
-              ]);
-            }}
-          />
+                ]);
+              }}
+            />
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -302,112 +245,76 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingHorizontal: 20,
   },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: colors.text,
+  scroll: {
+    flex: 1,
   },
-  screenHint: {
-    marginTop: 6,
-    marginBottom: 16,
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.textMuted,
-  },
-  card: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: 20,
-    padding: 20,
+  hero: {
+    backgroundColor: colors.cta,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 8,
   },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.ctaSoft,
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.55)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
   },
   userName: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "800",
-    color: colors.text,
+    color: "#fff",
+    textAlign: "center",
   },
   userEmail: {
-    marginTop: 4,
-    fontSize: 13,
-    color: colors.textMuted,
+    marginTop: 6,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.85)",
     textAlign: "center",
   },
   profileActions: {
-    marginTop: 16,
+    marginTop: 18,
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   outlineBtn: {
     borderWidth: 1.5,
-    borderColor: colors.cta,
+    borderColor: "rgba(255,255,255,0.9)",
     borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
   },
   outlineBtnText: {
-    color: colors.cta,
+    color: "#fff",
     fontWeight: "700",
     fontSize: 14,
   },
   clearText: {
-    color: colors.textMuted,
+    color: "rgba(255,255,255,0.75)",
     fontSize: 13,
     fontWeight: "600",
   },
-  form: {
-    width: "100%",
-    gap: 8,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.textMuted,
-    marginTop: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.text,
-    backgroundColor: colors.bg,
-  },
-  formActions: {
-    marginTop: 12,
-    alignItems: "center",
-    gap: 10,
-  },
-  saveBtn: {
-    backgroundColor: colors.cta,
-    borderRadius: 999,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-  },
-  saveBtnText: {
-    color: colors.ctaText,
-    fontWeight: "700",
-  },
-  cancelText: {
-    color: colors.textMuted,
-    fontWeight: "600",
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   section: {
-    marginTop: 22,
+    marginTop: 8,
     marginBottom: 10,
     fontSize: 13,
     fontWeight: "700",
@@ -417,28 +324,35 @@ const styles = StyleSheet.create({
   },
   group: {
     backgroundColor: colors.bgElevated,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 18,
     overflow: "hidden",
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
   },
   rowPressed: {
     backgroundColor: colors.ctaSoft,
   },
   rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.ctaSoft,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -447,7 +361,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.text,
   },
   rowHint: {

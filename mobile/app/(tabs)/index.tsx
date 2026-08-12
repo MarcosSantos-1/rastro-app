@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 
@@ -9,67 +9,80 @@ export default function InicioScreen() {
   const fabBottom = Math.max(insets.bottom, 8) + 16;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 16 }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: fabBottom + 72 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.greeting}>Olá!</Text>
-        <Text style={styles.subtitle}>
-          Pronto para deixar a cidade um pouco mais limpa hoje?
-        </Text>
+    <View
+      style={[
+        styles.root,
+        {
+          paddingTop: insets.top + 20,
+          paddingBottom: fabBottom + 72,
+        },
+      ]}
+    >
+      <Text style={styles.greeting}>Olá!</Text>
 
-        <View style={styles.hero}>
+      <View style={styles.hero}>
+        <View style={styles.heroTop}>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="leaf" size={28} color={colors.cta} />
+            <Ionicons name="leaf" size={26} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Seu impacto começa aqui</Text>
-          <Text style={styles.heroBody}>
-            Registre um descarte irregular em segundos. A IA ajuda a classificar e a
-            prefeitura recebe o ponto certo no mapa.
-          </Text>
-          <Pressable
-            style={({ pressed }) => [styles.heroCta, pressed && styles.heroCtaPressed]}
-            onPress={() => router.push("/registro")}
-          >
-            <Ionicons name="camera-outline" size={20} color={colors.ctaText} />
-            <Text style={styles.heroCtaText}>Registrar ocorrência</Text>
-          </Pressable>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>Rastro</Text>
+          </View>
         </View>
-
-        <Text style={styles.sectionLabel}>Atalhos</Text>
-
+        <Text style={styles.heroTitle}>Seu impacto começa aqui</Text>
+        <Text style={styles.heroBody}>
+          Registre um descarte irregular em segundos. A IA classifica o resíduo e o ponto
+          aparece no mapa da cidade.
+        </Text>
         <Pressable
-          style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
-          onPress={() => router.push("/(tabs)/mapa")}
+          style={({ pressed }) => [styles.heroCta, pressed && styles.heroCtaPressed]}
+          onPress={() => router.push("/registro")}
         >
-          <View style={[styles.rowIcon, { backgroundColor: "rgba(37, 99, 235, 0.12)" }]}>
-            <Ionicons name="map-outline" size={22} color={colors.pinBlue} />
-          </View>
-          <View style={styles.rowCopy}>
-            <Text style={styles.rowTitle}>Ver mapa</Text>
-            <Text style={styles.rowHint}>Ocorrências e ecopontos perto de você</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <Ionicons name="camera" size={20} color={colors.ctaText} />
+          <Text style={styles.heroCtaText}>Registrar ocorrência</Text>
         </Pressable>
+      </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
-          onPress={() => router.push("/(tabs)/perfil")}
-        >
-          <View style={[styles.rowIcon, { backgroundColor: colors.ctaSoft }]}>
-            <Ionicons name="person-outline" size={22} color={colors.cta} />
-          </View>
-          <View style={styles.rowCopy}>
-            <Text style={styles.rowTitle}>Perfil e ajustes</Text>
-            <Text style={styles.rowHint}>Termos, privacidade e preferências</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </Pressable>
-      </ScrollView>
+      <Text style={styles.sectionLabel}>Explorar</Text>
+
+      <Pressable
+        style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
+        onPress={() => router.push("/(tabs)/mapa")}
+      >
+        <View style={[styles.rowIcon, { backgroundColor: colors.pinBlue }]}>
+          <Ionicons name="map" size={22} color="#fff" />
+        </View>
+        <View style={styles.rowCopy}>
+          <Text style={styles.rowTitle}>Ver mapa</Text>
+          <Text style={styles.rowHint}>
+            Ocorrências próximas, status e ecopontos de coleta
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
+        onPress={() => router.push("/(tabs)/perfil")}
+      >
+        <View style={[styles.rowIcon, { backgroundColor: colors.cta }]}>
+          <Ionicons name="person" size={22} color="#fff" />
+        </View>
+        <View style={styles.rowCopy}>
+          <Text style={styles.rowTitle}>Perfil e ajustes</Text>
+          <Text style={styles.rowHint}>
+            Dados opcionais, notificações, termos e privacidade
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+      </Pressable>
+
+      <View style={styles.footerNote}>
+        <Ionicons name="shield-checkmark" size={16} color={colors.cta} />
+        <Text style={styles.footerNoteText}>
+          Seus registros passam por triagem automática antes de entrar no mapa.
+        </Text>
+      </View>
 
       <Pressable
         style={({ pressed }) => [
@@ -90,58 +103,71 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  scroll: {
     paddingHorizontal: 20,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "800",
     color: colors.text,
-  },
-  subtitle: {
-    marginTop: 6,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textMuted,
-    maxWidth: 320,
+    marginBottom: 20,
   },
   hero: {
-    marginTop: 24,
     backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: 22,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
   heroIconWrap: {
     width: 48,
     height: 48,
-    borderRadius: 16,
-    backgroundColor: colors.ctaSoft,
+    borderRadius: 14,
+    backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+  },
+  heroBadge: {
+    backgroundColor: colors.ctaSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  heroBadgeText: {
+    color: colors.cta,
+    fontWeight: "800",
+    fontSize: 12,
+    letterSpacing: 0.4,
   },
   heroTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
     color: colors.text,
   },
   heroBody: {
-    marginTop: 8,
+    marginTop: 10,
     fontSize: 14,
     lineHeight: 21,
     color: colors.textMuted,
   },
   heroCta: {
-    marginTop: 18,
+    marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     backgroundColor: colors.cta,
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderRadius: 999,
   },
   heroCtaPressed: {
@@ -164,21 +190,26 @@ const styles = StyleSheet.create({
   rowCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     backgroundColor: colors.bgElevated,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   rowCardPressed: {
-    opacity: 0.85,
+    opacity: 0.88,
   },
   rowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -186,13 +217,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
     color: colors.text,
   },
   rowHint: {
-    marginTop: 2,
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textMuted,
+  },
+  footerNote: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  footerNoteText: {
+    flex: 1,
     fontSize: 12,
+    lineHeight: 17,
     color: colors.textMuted,
   },
   fab: {
