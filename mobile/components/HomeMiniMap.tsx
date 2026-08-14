@@ -1,20 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet, View } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from "react-native-maps";
+import { useMemo } from "react";
+import { StyleSheet, View } from "react-native";
+import { WebView } from "react-native-webview";
 import { colors } from "@/constants/colors";
 
-const CARTO_LIGHT = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
 const FALLBACK = { lat: -23.5505, lng: -46.6333 };
-
-/** Esconde o mapa-base do Google para sobrar só o Carto Positron (sem logo Leaflet). */
-const HIDDEN_BASE = [
-  { stylers: [{ visibility: "off" as const }] },
-  {
-    featureType: "landscape",
-    elementType: "geometry",
-    stylers: [{ visibility: "on" as const }, { color: "#f4f4f4" }],
-  },
-];
 
 export type HomeMiniMapDot = {
   id: string;
@@ -29,71 +18,111 @@ type Props = {
   dots: HomeMiniMapDot[];
 };
 
+function buildHtml(
+  lat: number,
+  lng: number,
+  dots: HomeMiniMapDot[],
+  user: { lat: number; lng: number } | null,
+): string {
+  const payload = JSON.stringify({
+    lat,
+    lng,
+    dots,
+    user,
+    green: colors.statusGreen,
+    blue: colors.pinBlue,
+    cta: colors.cta,
+  });
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #f4f4f4; overflow: hidden; }
+    .leaflet-control-container { display: none !important; }
+    .user-tri {
+      width: 0; height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 14px solid ${colors.cta};
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const D = ${payload};
+    const map = L.map("map", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      tap: false,
+      touchZoom: false,
+      bounceAtZoomLimits: false,
+    }).setView([D.lat, D.lng], 15);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: "",
+      subdomains: "abcd",
+      maxZoom: 19,
+    }).addTo(map);
+    for (const d of D.dots) {
+      L.circleMarker([d.lat, d.lng], {
+        radius: 6,
+        color: "#fff",
+        weight: 1.5,
+        fillColor: d.kind === "ecoponto" ? D.blue : D.green,
+        fillOpacity: 1,
+      }).addTo(map);
+    }
+    if (D.user) {
+      const icon = L.divIcon({
+        className: "",
+        html: '<div class="user-tri"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 10],
+      });
+      L.marker([D.user.lat, D.user.lng], { icon: icon, interactive: false }).addTo(map);
+    }
+    setTimeout(function () { map.invalidateSize(); }, 80);
+  </script>
+</body>
+</html>`;
+}
+
 export function HomeMiniMap({ center, user, dots }: Props) {
   const lat = user?.lat ?? center?.lat ?? FALLBACK.lat;
   const lng = user?.lng ?? center?.lng ?? FALLBACK.lng;
-  const region = {
-    latitude: lat,
-    longitude: lng,
-    latitudeDelta: 0.016,
-    longitudeDelta: 0.016,
-  };
+  const html = useMemo(
+    () => buildHtml(lat, lng, dots, user),
+    [lat, lng, dots, user],
+  );
 
   return (
     <View style={styles.wrap} pointerEvents="none">
-      <MapView
+      <WebView
+        originWhitelist={["*"]}
+        source={{ html }}
         style={styles.map}
-        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-        mapType={Platform.OS === "android" ? "none" : "standard"}
-        customMapStyle={HIDDEN_BASE}
-        initialRegion={region}
-        region={region}
         scrollEnabled={false}
-        zoomEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
-        toolbarEnabled={false}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        showsCompass={false}
-        showsScale={false}
-        loadingEnabled={false}
-        legalLabelInsets={{ top: 0, right: -80, bottom: -80, left: 0 }}
-      >
-        <UrlTile
-          urlTemplate={CARTO_LIGHT}
-          maximumZ={19}
-          zIndex={-1}
-          shouldReplaceMapContent
-        />
-        {dots.map((d) => (
-          <Marker
-            key={d.id}
-            coordinate={{ latitude: d.lat, longitude: d.lng }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-          >
-            <View
-              style={[
-                styles.dot,
-                {
-                  backgroundColor:
-                    d.kind === "ecoponto" ? colors.pinBlue : colors.statusGreen,
-                },
-              ]}
-            />
-          </Marker>
-        ))}
-        {user ? (
-          <Marker
-            coordinate={{ latitude: user.lat, longitude: user.lng }}
-            anchor={{ x: 0.5, y: 0.55 }}
-            tracksViewChanges={false}
-          >
-            <Ionicons name="navigate" size={18} color={colors.cta} />
-          </Marker>
-        ) : null}
-      </MapView>
+        bounces={false}
+        overScrollMode="never"
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        javaScriptEnabled
+        setSupportMultipleWindows={false}
+        androidLayerType="hardware"
+        mixedContentMode="always"
+        allowsInlineMediaPlayback
+      />
     </View>
   );
 }
@@ -101,15 +130,10 @@ export function HomeMiniMap({ center, user, dots }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#f4f4f4",
   },
   map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  dot: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: "#fff",
+    flex: 1,
+    backgroundColor: "transparent",
   },
 });
