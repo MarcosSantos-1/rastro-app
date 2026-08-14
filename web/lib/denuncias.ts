@@ -28,6 +28,7 @@ export interface DenunciaDoc {
   iaDescricao?: string | null;
   iaContemPessoas?: boolean | null;
   iaReciclavel?: boolean | null;
+  iaErro?: string | null;
   createdAt: string;
   atualizadoEm?: string;
   updatedAt?: string;
@@ -192,6 +193,7 @@ export function parseDenunciaDoc(id: string, raw: Record<string, unknown>): Denu
     iaDescricao: asString(raw.iaDescricao) ?? null,
     iaContemPessoas: asBool(raw.iaContemPessoas) ?? null,
     iaReciclavel: asBool(raw.iaReciclavel) ?? null,
+    iaErro: asString(raw.iaErro) ?? null,
     createdAt,
     atualizadoEm,
     cidadaoAnonimo: asBool(raw.cidadaoAnonimo),

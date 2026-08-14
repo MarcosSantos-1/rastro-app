@@ -62,3 +62,37 @@ export async function patchDenunciaTriagem(opts: {
     throw new Error(`Firestore PATCH ${res.status}: ${text.slice(0, 400)}`);
   }
 }
+
+/** Grava falha de triagem sem mudar o status (continua em análise). */
+export async function patchDenunciaTriagemErro(opts: {
+  projectId: string;
+  idToken: string;
+  denunciaId: string;
+  message: string;
+}): Promise<void> {
+  const atualizadoEm = new Date().toISOString();
+  const message = opts.message.slice(0, 400);
+  const fields: Record<string, Record<string, unknown>> = {
+    iaErro: firestoreValue(message),
+    atualizadoEm: firestoreValue(atualizadoEm),
+  };
+  const masks = Object.keys(fields)
+    .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
+    .join("&");
+
+  const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(opts.projectId)}/databases/(default)/documents/denuncias/${encodeURIComponent(opts.denunciaId)}?${masks}`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${opts.idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ fields }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Firestore PATCH iaErro ${res.status}: ${text.slice(0, 400)}`);
+  }
+}

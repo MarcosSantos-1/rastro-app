@@ -164,9 +164,18 @@ export function OcorrenciaModal({
             Triagem IA
           </div>
           {!hasIaResult ? (
-            <p className={`text-sm font-semibold ${iaTitleClass}`}>
-              Aguardando análise em segundo plano…
-            </p>
+            local.iaErro ? (
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                  Triagem falhou
+                </p>
+                <p className="text-sm text-[var(--foreground)]">{local.iaErro}</p>
+              </div>
+            ) : (
+              <p className={`text-sm font-semibold ${iaTitleClass}`}>
+                Aguardando análise em segundo plano…
+              </p>
+            )
           ) : (
             <div className="space-y-2">
               <p className={`text-base font-bold ${iaTitleClass}`}>

@@ -1,6 +1,6 @@
 import { AuthError, verifyFirebaseIdToken } from "./firebase-auth";
 import { analyzeImageWithGemini } from "./gemini";
-import { patchDenunciaTriagem } from "./firestore";
+import { patchDenunciaTriagem, patchDenunciaTriagemErro } from "./firestore";
 import { emptyCors, jsonResponse } from "./cors";
 
 export interface Env {
@@ -122,11 +122,17 @@ async function handlePostFoto(
 
   // Triagem Gemini em segundo plano (foto já cai no portal como Em análise).
   const triageOn = (env.TRIAGE_ENABLED ?? "true").toLowerCase() !== "false";
-  if (triageOn && env.GEMINI_API_KEY && index === 0) {
+  const hasGeminiKey = Boolean((env.GEMINI_API_KEY || "").trim());
+  const shouldTriage = triageOn && index === 0;
+
+  if (shouldTriage) {
     const imageCopy = bytes.slice(0);
     ctx.waitUntil(
       (async () => {
         try {
+          if (!hasGeminiKey) {
+            throw new Error("GEMINI_API_KEY ausente no Worker");
+          }
           const ia = await analyzeImageWithGemini({
             apiKey: env.GEMINI_API_KEY,
             model: env.GEMINI_MODEL || "gemini-3.1-flash-lite",
@@ -140,10 +146,21 @@ async function handlePostFoto(
             ia,
           });
         } catch (err) {
-          console.error(
-            "triagem background falhou",
-            err instanceof Error ? err.message : String(err),
-          );
+          const message = err instanceof Error ? err.message : String(err);
+          console.error("triagem background falhou", message);
+          try {
+            await patchDenunciaTriagemErro({
+              projectId: env.FIREBASE_PROJECT_ID,
+              idToken,
+              denunciaId,
+              message,
+            });
+          } catch (err2) {
+            console.error(
+              "falha ao gravar iaErro",
+              err2 instanceof Error ? err2.message : String(err2),
+            );
+          }
         }
       })(),
     );
@@ -152,7 +169,7 @@ async function handlePostFoto(
   return jsonResponse(request, {
     fotoUrl,
     key,
-    triage: "background",
+    triage: shouldTriage ? "background" : "skipped",
   });
 }
 
@@ -201,6 +218,7 @@ export default {
           service: "rastro-api",
           r2PublicConfigured: Boolean((env.R2_PUBLIC_BASE_URL || "").trim()),
           triageEnabled: (env.TRIAGE_ENABLED ?? "true").toLowerCase() !== "false",
+          geminiConfigured: Boolean((env.GEMINI_API_KEY || "").trim()),
         });
       }
 

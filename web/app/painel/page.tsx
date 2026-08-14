@@ -121,6 +121,7 @@ export default function PainelPage() {
       fresh.iaValida !== selected.iaValida ||
       fresh.iaScore !== selected.iaScore ||
       fresh.iaDescricao !== selected.iaDescricao ||
+      fresh.iaErro !== selected.iaErro ||
       JSON.stringify(fresh.fotoUrls) !== JSON.stringify(selected.fotoUrls)
     ) {
       setSelected(fresh);
