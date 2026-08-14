@@ -18,6 +18,7 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const focused = state.index === index;
+        const isHome = route.name === "index";
         const label =
           options.title ??
           (typeof options.tabBarLabel === "string" ? options.tabBarLabel : route.name);
@@ -32,8 +33,6 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             navigation.navigate(route.name, route.params);
           }
         };
-
-        const isHome = route.name === "index";
         const iconName =
           route.name === "mapa"
             ? focused

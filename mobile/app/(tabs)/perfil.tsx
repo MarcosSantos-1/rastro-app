@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { router, useFocusEffect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -27,6 +28,7 @@ type OptionalProfile = {
 
 type SettingsRowProps = {
   icon: keyof typeof Ionicons.glyphMap;
+  iconBg?: string;
   label: string;
   hint?: string;
   onPress?: () => void;
@@ -34,10 +36,10 @@ type SettingsRowProps = {
   last?: boolean;
 };
 
-function SettingsRow({ icon, label, hint, onPress, right, last }: SettingsRowProps) {
+function SettingsRow({ icon, iconBg, label, hint, onPress, right, last }: SettingsRowProps) {
   const content = (
     <>
-      <View style={styles.rowIcon}>
+      <View style={[styles.rowIcon, iconBg ? { backgroundColor: iconBg } : null]}>
         <Ionicons name={icon} size={20} color="#fff" />
       </View>
       <View style={styles.rowCopy}>
@@ -99,7 +101,7 @@ export default function PerfilScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 32 }}
+        contentContainerStyle={{ paddingBottom: 8 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.hero, { paddingTop: insets.top + 20 }]}>
@@ -128,6 +130,7 @@ export default function PerfilScreen() {
           <View style={styles.group}>
             <SettingsRow
               icon="notifications"
+              iconBg={colors.statusOrange}
               label="Notificações"
               hint="Avisos sobre status de ocorrências"
               right={
@@ -140,13 +143,8 @@ export default function PerfilScreen() {
               }
             />
             <SettingsRow
-              icon="language"
-              label="Idioma"
-              hint="Português (Brasil)"
-              onPress={() => openPlaceholder("Idioma")}
-            />
-            <SettingsRow
               icon="settings"
+              iconBg="#64748b"
               label="Configurações"
               hint="Localização, câmera e armazenamento"
               last
@@ -170,16 +168,19 @@ export default function PerfilScreen() {
           <View style={styles.group}>
             <SettingsRow
               icon="document-text"
+              iconBg={colors.pinBlue}
               label="Termos de uso"
               onPress={() => router.push("/termos")}
             />
             <SettingsRow
               icon="shield-checkmark"
+              iconBg={colors.statusGreen}
               label="Política de privacidade"
               onPress={() => router.push("/privacidade")}
             />
             <SettingsRow
               icon="chatbubbles"
+              iconBg={colors.statusCyan}
               label="Enviar feedback"
               hint="Conte o que podemos melhorar"
               onPress={() =>
@@ -190,12 +191,14 @@ export default function PerfilScreen() {
             />
             <SettingsRow
               icon="star"
+              iconBg={colors.pinAmber}
               label="Avaliar o app"
               hint="Rate us na loja"
               onPress={() => openPlaceholder("Avaliar o app")}
             />
             <SettingsRow
               icon="help-circle"
+              iconBg="#7c3aed"
               label="Central de ajuda"
               last
               onPress={() =>
@@ -210,12 +213,14 @@ export default function PerfilScreen() {
           <View style={styles.group}>
             <SettingsRow
               icon="information-circle"
+              iconBg={colors.cta}
               label="Sobre o Rastro"
               hint={`Versão ${version}`}
               onPress={() => router.push("/sobre")}
             />
             <SettingsRow
               icon="images"
+              iconBg={colors.statusCyan}
               label="Ver introdução"
               hint="Mostrar o onboarding de novo"
               last
@@ -233,6 +238,14 @@ export default function PerfilScreen() {
                   },
                 ]);
               }}
+            />
+          </View>
+
+          <View style={styles.footerBrand}>
+            <Image
+              source={require("@/assets/images/rastro_letter.png")}
+              style={styles.footerLetter}
+              contentFit="contain"
             />
           </View>
         </View>
@@ -368,5 +381,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: colors.textMuted,
+  },
+  footerBrand: {
+    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 0,
+  },
+  footerLetter: {
+    width: 160,
+    height: 42,
   },
 });

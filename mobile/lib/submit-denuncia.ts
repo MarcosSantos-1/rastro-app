@@ -6,10 +6,11 @@ import {
   limit,
   query,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { Image } from "react-native";
-import type { DenunciaCategoria, DenunciaDoc } from "@/lib/denuncias";
+import type { Denuncia, DenunciaCategoria, DenunciaDoc } from "@/lib/denuncias";
 import { DENUNCIAS_COLLECTION, isDenunciaAtiva, parseDenunciaDoc } from "@/lib/denuncias";
 import { distanceMeters, withTimeout } from "@/lib/geo";
 import { auth, db } from "@/lib/firebase";
@@ -103,6 +104,28 @@ export async function listDenunciasNear(
     const dist = distanceMeters(lat, lng, d.lat, d.lng);
     if (dist <= radiusM) out.push({ ...d, distanceM: dist });
   }
+  return out;
+}
+
+/** Denúncias do cidadão autenticado (sessão anônima inclusive). */
+export async function listMinhasDenuncias(uid: string): Promise<Denuncia[]> {
+  const snap = await withTimeout(
+    getDocs(
+      query(
+        collection(db, DENUNCIAS_COLLECTION),
+        where("userId", "==", uid),
+        limit(200),
+      ),
+    ),
+    8_000,
+    "Firestore",
+  );
+  const out: Denuncia[] = [];
+  for (const docSnap of snap.docs) {
+    const d = parseDenunciaDoc(docSnap.id, docSnap.data() as Record<string, unknown>);
+    if (d) out.push(d);
+  }
+  out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   return out;
 }
 

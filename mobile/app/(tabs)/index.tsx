@@ -1,83 +1,307 @@
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import * as Location from "expo-location";
+import { router, useFocusEffect, useNavigation } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HomeMiniMap, type HomeMiniMapDot } from "@/components/HomeMiniMap";
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+import { homeStatusBucket } from "@/lib/denuncias";
+import { distanceMeters, withTimeout } from "@/lib/geo";
+import { listDenunciasNear, listMinhasDenuncias, MAP_RADIUS_M } from "@/lib/submit-denuncia";
+import ecopontos from "@/assets/data/ecopontos-sp.json";
+
+type Ecoponto = {
+  id: string;
+  nome: string;
+  lat: number;
+  lng: number;
+};
+
+const ECOPONTOS = ecopontos as Ecoponto[];
+const ECOPONTO_RADIUS_M = 2500;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const MOCK_NOTIFS = [
+  {
+    id: "1",
+    title: "Ocorrência publicada",
+    body: "Seu registro foi validado e já aparece no mapa da cidade.",
+    time: "Há 2 h",
+  },
+  {
+    id: "2",
+    title: "Encaminhada à prefeitura",
+    body: "A ouvidoria recebeu a ocorrência da Rua das Palmeiras.",
+    time: "Ontem",
+  },
+  {
+    id: "3",
+    title: "Ecoponto próximo",
+    body: "Há um ponto de coleta a menos de 1 km de você.",
+    time: "Há 3 dias",
+  },
+];
 
 export default function InicioScreen() {
   const insets = useSafeAreaInsets();
-  const fabBottom = Math.max(insets.bottom, 8) + 16;
+  const navigation = useNavigation();
+  const scrollRef = useRef<ScrollView>(null);
+  const { user, ensureAnonymous } = useAuth();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [counts, setCounts] = useState({ encaminhados: 0, emExecucao: 0, resolvidos: 0 });
+  const [nearbyOcc, setNearbyOcc] = useState(0);
+  const [nearbyEco, setNearbyEco] = useState(0);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [miniDots, setMiniDots] = useState<HomeMiniMapDot[]>([]);
+  const fabBottom = 16;
+
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
+  useEffect(() => {
+    const nav = navigation as unknown as {
+      addListener: (event: "tabPress", cb: () => void) => () => void;
+    };
+    return nav.addListener("tabPress", scrollToTop);
+  }, [navigation, scrollToTop]);
+
+  useFocusEffect(
+    useCallback(() => {
+      scrollToTop();
+      let alive = true;
+      void (async () => {
+        let uid = user?.uid;
+        try {
+          const session = await ensureAnonymous();
+          uid = session.uid;
+        } catch {
+          /* mapa / registro tentam de novo */
+        }
+        if (uid) {
+          try {
+            const mine = await listMinhasDenuncias(uid);
+            if (!alive) return;
+            let encaminhados = 0;
+            let emExecucao = 0;
+            let resolvidos = 0;
+            for (const d of mine) {
+              const bucket = homeStatusBucket(d.status);
+              if (bucket === "encaminhado") encaminhados += 1;
+              else if (bucket === "em_execucao") emExecucao += 1;
+              else if (bucket === "resolvido") resolvidos += 1;
+            }
+            setCounts({ encaminhados, emExecucao, resolvidos });
+          } catch {
+            if (alive) setCounts({ encaminhados: 0, emExecucao: 0, resolvidos: 0 });
+          }
+        }
+
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== "granted") return;
+          const pos = await withTimeout(
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            8_000,
+            "GPS",
+          ).catch(async () => {
+            const last = await Location.getLastKnownPositionAsync();
+            if (!last) throw new Error("GPS indisponível");
+            return last;
+          });
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          if (!alive) return;
+          setUserLoc({ lat, lng });
+
+          const ecos = ECOPONTOS.filter(
+            (e) => distanceMeters(lat, lng, e.lat, e.lng) <= ECOPONTO_RADIUS_M,
+          );
+          setNearbyEco(ecos.length);
+
+          const denuncias = await listDenunciasNear(lat, lng, MAP_RADIUS_M);
+          if (!alive) return;
+          const cutoff = Date.now() - SEVEN_DAYS_MS;
+          const recent = denuncias.filter((d) => {
+            const t = new Date(d.createdAt).getTime();
+            return Number.isFinite(t) && t >= cutoff;
+          });
+          setNearbyOcc(recent.length);
+
+          const occDots: HomeMiniMapDot[] = denuncias.slice(0, 12).map((d) => ({
+            id: `d-${d.id}`,
+            lat: d.lat,
+            lng: d.lng,
+            kind: "ocorrencia" as const,
+          }));
+          const ecoDots: HomeMiniMapDot[] = ecos.slice(0, 8).map((e) => ({
+            id: `e-${e.id}`,
+            lat: e.lat,
+            lng: e.lng,
+            kind: "ecoponto" as const,
+          }));
+          setMiniDots([...occDots, ...ecoDots]);
+        } catch {
+          if (alive) {
+            setNearbyOcc(0);
+            setNearbyEco(0);
+            setMiniDots([]);
+          }
+        }
+      })();
+      return () => {
+        alive = false;
+      };
+    }, [ensureAnonymous, user?.uid, scrollToTop]),
+  );
 
   return (
-    <View
-      style={[
-        styles.root,
-        {
-          paddingTop: insets.top + 20,
-          paddingBottom: fabBottom + 72,
-        },
-      ]}
-    >
-      <Text style={styles.greeting}>Olá!</Text>
-
-      <View style={styles.hero}>
-        <View style={styles.heroIconWrap}>
-          <Ionicons name="leaf" size={26} color="#fff" />
+    <View style={styles.root}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={{
+          paddingTop: insets.top + 25,
+          paddingBottom: fabBottom + 80,
+          paddingHorizontal: 20,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.headerRow}>
+          <Text style={styles.greeting}>Olá!</Text>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
+              onPress={() => setNotifOpen(true)}
+              accessibilityLabel="Notificações"
+            >
+              <Ionicons name="notifications" size={20} color={colors.text} />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
+              onPress={() => router.push("/(tabs)/perfil")}
+              accessibilityLabel="Meu perfil"
+            >
+              <Ionicons name="person" size={20} color={colors.text} />
+            </Pressable>
+          </View>
         </View>
-        <Text style={styles.heroTitle}>Seu impacto começa aqui</Text>
-        <Text style={styles.heroBody}>
-          Registre um descarte irregular em segundos. A IA classifica o resíduo e o ponto
-          aparece no mapa da cidade.
-        </Text>
+
         <Pressable
-          style={({ pressed }) => [styles.heroCta, pressed && styles.heroCtaPressed]}
+          style={styles.hero}
           onPress={() => router.push("/registro")}
+          accessibilityLabel="Registrar ocorrência"
         >
-          <Ionicons name="camera" size={20} color={colors.ctaText} />
-          <Text style={styles.heroCtaText}>Registrar ocorrência</Text>
+          <Image
+            source={require("@/assets/images/main_page_card.png")}
+            style={styles.heroImage}
+            contentFit="cover"
+          />
+          <View style={styles.heroIconWrap}>
+            <Ionicons name="leaf" size={26} color="#fff" />
+          </View>
+          <View style={styles.heroCamBtn}>
+            <Ionicons name="camera" size={22} color={colors.cta} />
+          </View>
         </Pressable>
-      </View>
 
-      <Text style={styles.sectionLabel}>Explorar</Text>
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Meus registros</Text>
+          <Pressable
+            onPress={() => router.push("/meus-registros")}
+            hitSlop={8}
+            accessibilityLabel="Ver todos os registros"
+          >
+            <Text style={styles.verTodos}>Ver todos &gt;</Text>
+          </Pressable>
+        </View>
 
-      <Pressable
-        style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
-        onPress={() => router.push("/(tabs)/mapa")}
-      >
-        <View style={[styles.rowIcon, { backgroundColor: colors.pinBlue }]}>
-          <Ionicons name="map" size={22} color="#fff" />
+        <View style={styles.statsRow}>
+          <View style={styles.statCol}>
+            <View style={[styles.statIcon, { backgroundColor: colors.statusCyanSoft }]}>
+              <Ionicons name="send" size={18} color={colors.statusCyan} />
+            </View>
+            <Text style={styles.statNum}>{counts.encaminhados}</Text>
+            <Text style={styles.statLabel}>Encaminhados</Text>
+          </View>
+          <View style={styles.statCol}>
+            <View style={[styles.statIcon, { backgroundColor: colors.statusOrangeSoft }]}>
+              <Ionicons name="construct" size={18} color={colors.statusOrange} />
+            </View>
+            <Text style={styles.statNum}>{counts.emExecucao}</Text>
+            <Text style={styles.statLabel}>Em execução</Text>
+          </View>
+          <View style={styles.statCol}>
+            <View style={[styles.statIcon, { backgroundColor: colors.statusGreenSoft }]}>
+              <Ionicons name="checkmark-circle" size={18} color={colors.statusGreen} />
+            </View>
+            <Text style={styles.statNum}>{counts.resolvidos}</Text>
+            <Text style={styles.statLabel}>Resolvidos</Text>
+          </View>
         </View>
-        <View style={styles.rowCopy}>
-          <Text style={styles.rowTitle}>Ver mapa</Text>
-          <Text style={styles.rowHint}>
-            Ocorrências próximas, status e ecopontos de coleta
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-      </Pressable>
 
-      <Pressable
-        style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
-        onPress={() => router.push("/(tabs)/perfil")}
-      >
-        <View style={[styles.rowIcon, { backgroundColor: colors.cta }]}>
-          <Ionicons name="person" size={22} color="#fff" />
-        </View>
-        <View style={styles.rowCopy}>
-          <Text style={styles.rowTitle}>Perfil e ajustes</Text>
-          <Text style={styles.rowHint}>
-            Dados opcionais, notificações, termos e privacidade
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-      </Pressable>
+        <View style={styles.nearRow}>
+          <Pressable
+            style={({ pressed }) => [styles.nearCard, styles.nearLeft, pressed && styles.cardPressed]}
+            onPress={() => router.push("/(tabs)/mapa")}
+          >
+            <Text style={styles.nearTitle}>Perto de você</Text>
+            <View style={styles.nearLine}>
+              <View style={styles.nearIcon}>
+                <Ionicons name="location" size={18} color="#fff" />
+              </View>
+              <View style={styles.nearCopy}>
+                <Text style={styles.nearCount}>
+                  {nearbyOcc} {nearbyOcc === 1 ? "Ocorrência" : "Ocorrências"}
+                </Text>
+                <Text style={styles.nearHint}>nos últimos 7 dias</Text>
+              </View>
+            </View>
+            <View style={styles.nearLine}>
+              <View style={[styles.nearIcon, { backgroundColor: colors.pinBlue }]}>
+                <MaterialCommunityIcons name="recycle" size={18} color="#fff" />
+              </View>
+              <View style={styles.nearCopy}>
+                <Text style={styles.nearCount}>
+                  {nearbyEco} {nearbyEco === 1 ? "ecoponto" : "ecopontos"}
+                </Text>
+                <Text style={styles.nearHint}>próximos a você</Text>
+              </View>
+            </View>
+          </Pressable>
 
-      <View style={styles.footerNote}>
-        <Ionicons name="shield-checkmark" size={16} color={colors.cta} />
-        <Text style={styles.footerNoteText}>
-          Seus registros passam por triagem automática antes de entrar no mapa.
-        </Text>
-      </View>
+          <View style={[styles.nearCard, styles.nearRight]}>
+            <HomeMiniMap center={userLoc} user={userLoc} dots={miniDots} />
+            <View style={styles.verMapaChip} pointerEvents="none">
+              <Ionicons name="map" size={14} color={colors.cta} />
+              <Text style={styles.verMapaText}>Ver no mapa</Text>
+            </View>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => router.push("/(tabs)/mapa")}
+              accessibilityLabel="Ver no mapa"
+            />
+          </View>
+        </View>
+
+        <View style={styles.bannerWrap}>
+          <Image
+            source={require("@/assets/images/main_page_cardII.png")}
+            style={styles.bannerImage}
+            contentFit="cover"
+          />
+        </View>
+      </ScrollView>
 
       <Pressable
         style={({ pressed }) => [
@@ -90,6 +314,38 @@ export default function InicioScreen() {
       >
         <Ionicons name="add" size={30} color={colors.ctaText} />
       </Pressable>
+
+      <Modal
+        visible={notifOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotifOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setNotifOpen(false)} />
+          <View style={[styles.notifSheet, { marginTop: insets.top + 64 }]}>
+            <View style={styles.notifHead}>
+              <Text style={styles.notifTitle}>Notificações</Text>
+              <Pressable onPress={() => setNotifOpen(false)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            {MOCK_NOTIFS.map((n, i) => (
+              <View
+                key={n.id}
+                style={[styles.notifItem, i === MOCK_NOTIFS.length - 1 && styles.notifItemLast]}
+              >
+                <View style={styles.notifDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.notifItemTitle}>{n.title}</Text>
+                  <Text style={styles.notifItemBody}>{n.body}</Text>
+                  <Text style={styles.notifItemTime}>{n.time}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -98,124 +354,288 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingHorizontal: 20,
+  },
+  scroll: {
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 25,
+    paddingTop: 5,
   },
   greeting: {
     fontSize: 32,
     fontWeight: "800",
     color: colors.text,
-    marginBottom: 20,
   },
-  hero: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: colors.bgElevated,
-    borderRadius: 24,
-    padding: 22,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  headerBtnPressed: {
+    opacity: 0.82,
+  },
+  hero: {
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.bgElevated,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
+  heroImage: {
+    width: "100%",
+    aspectRatio: 1.85,
+  },
   heroIconWrap: {
+    position: "absolute",
+    top: 16,
+    left: 16,
     width: 48,
     height: 48,
     borderRadius: 14,
     backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
-  heroTitle: {
-    fontSize: 22,
+  heroCamBtn: {
+    position: "absolute",
+    right: 14,
+    bottom: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  sectionHead: {
+    marginTop: 22,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "800",
     color: colors.text,
   },
-  heroBody: {
-    marginTop: 10,
+  verTodos: {
     fontSize: 14,
-    lineHeight: 21,
-    color: colors.textMuted,
-  },
-  heroCta: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.cta,
-    paddingVertical: 15,
-    borderRadius: 999,
-  },
-  heroCtaPressed: {
-    backgroundColor: colors.ctaPressed,
-  },
-  heroCtaText: {
-    color: colors.ctaText,
-    fontSize: 15,
     fontWeight: "700",
+    color: colors.cta,
   },
-  sectionLabel: {
-    marginTop: 28,
-    marginBottom: 12,
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  rowCard: {
+  statsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
     backgroundColor: colors.bgElevated,
     borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 14,
+  },
+  statCol: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.ctaSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statNum: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  nearRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+    marginBottom: 14,
+  },
+  nearCard: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  rowCardPressed: {
-    opacity: 0.88,
+  nearLeft: {
+    flex: 1.15,
+    padding: 14,
+    gap: 14,
   },
-  rowIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowCopy: {
+  nearRight: {
     flex: 1,
+    minHeight: 168,
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
-  rowTitle: {
-    fontSize: 16,
+  cardPressed: {
+    opacity: 0.9,
+  },
+  nearTitle: {
+    fontSize: 15,
     fontWeight: "800",
     color: colors.text,
   },
-  rowHint: {
+  nearLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  nearIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.cta,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nearCopy: {
+    flex: 1,
+  },
+  nearCount: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  nearHint: {
+    marginTop: 1,
+    fontSize: 11,
+    color: colors.textMuted,
+    opacity: 0.75,
+  },
+  verMapaChip: {
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  verMapaText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.cta,
+  },
+  bannerWrap: {
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.bgElevated,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  bannerImage: {
+    width: "100%",
+    aspectRatio: 2.15,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    paddingHorizontal: 16,
+  },
+  notifSheet: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
+    padding: 16,
+    maxHeight: "70%",
+    zIndex: 2,
+  },
+  notifHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  notifTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  notifItem: {
+    flexDirection: "row",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  notifItemLast: {
+    borderBottomWidth: 0,
+  },
+  notifDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.cta,
+    marginTop: 6,
+  },
+  notifItemTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  notifItemBody: {
     marginTop: 3,
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,
   },
-  footerNote: {
-    marginTop: 8,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    paddingHorizontal: 4,
-  },
-  footerNoteText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+  notifItemTime: {
+    marginTop: 4,
+    fontSize: 11,
     color: colors.textMuted,
   },
   fab: {

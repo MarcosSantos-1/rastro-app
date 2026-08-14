@@ -111,6 +111,13 @@ function AppShell() {
           <Stack.Screen name="privacidade" />
           <Stack.Screen name="sobre" />
           <Stack.Screen
+            name="meus-registros"
+            options={{
+              presentation: "card",
+              animation: "slide_from_right",
+            }}
+          />
+          <Stack.Screen
             name="registro"
             options={{
               presentation: "fullScreenModal",

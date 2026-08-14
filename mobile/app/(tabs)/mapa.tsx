@@ -318,6 +318,14 @@ export default function MapaScreen() {
         >
           <Ionicons name="locate" size={22} color={colors.cta} />
         </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.mapFab, pressed && styles.mapFabPressed]}
+          onPress={() => router.push("/registro")}
+          accessibilityLabel="Adicionar ocorrência"
+        >
+          <Ionicons name="add" size={30} color={colors.ctaText} />
+        </Pressable>
       </View>
 
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -568,6 +576,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
     zIndex: 20,
+  },
+  mapFab: {
+    position: "absolute",
+    right: 20,
+    bottom: 16,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.cta,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.cta,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 20,
+  },
+  mapFabPressed: {
+    backgroundColor: colors.ctaPressed,
   },
   sheet: {
     backgroundColor: colors.bgElevated,

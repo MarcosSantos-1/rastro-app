@@ -14,6 +14,12 @@ export const colors = {
   pinRed: "#e05a3c",
   pinAmber: "#d4a017",
   userCyan: "#38bdf8",
+  statusCyan: "#00b8d4",
+  statusCyanSoft: "rgba(0, 184, 212, 0.16)",
+  statusOrange: "#f97316",
+  statusOrangeSoft: "rgba(249, 115, 22, 0.16)",
+  statusGreen: "#22c55e",
+  statusGreenSoft: "rgba(34, 197, 94, 0.16)",
   danger: "#b91c1c",
   overlay: "rgba(15, 23, 42, 0.45)",
 } as const;

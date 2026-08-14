@@ -60,6 +60,22 @@ export const STATUS_LABEL: Record<DenunciaStatus, string> = {
   descartada: "Descartada",
 };
 
+/** Buckets da tela Início / Meus registros (visão do cidadão). */
+export type HomeStatusBucket = "encaminhado" | "em_execucao" | "resolvido";
+
+export const HOME_STATUS_LABEL: Record<HomeStatusBucket, string> = {
+  encaminhado: "Encaminhado",
+  em_execucao: "Em execução",
+  resolvido: "Resolvido",
+};
+
+export function homeStatusBucket(status: DenunciaStatus): HomeStatusBucket | null {
+  if (status === "em_analise" || status === "pendente") return "encaminhado";
+  if (status === "validada") return "em_execucao";
+  if (status === "roteada") return "resolvido";
+  return null;
+}
+
 const CATEGORIAS = new Set<string>(Object.keys(CATEGORIA_LABEL));
 const STATUSES = new Set<string>(Object.keys(STATUS_LABEL));
 
