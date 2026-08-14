@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -38,13 +38,9 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             ? focused
               ? "map"
               : "map-outline"
-            : route.name === "perfil"
-              ? focused
-                ? "person"
-                : "person-outline"
-              : focused
-                ? "home"
-                : "home-outline";
+            : focused
+              ? "home"
+              : "home-outline";
 
         if (isHome) {
           return (
@@ -63,6 +59,8 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           );
         }
 
+        const iconColor = focused ? colors.cta : colors.textMuted;
+
         return (
           <Pressable
             key={route.key}
@@ -72,11 +70,15 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             accessibilityLabel={label}
             style={styles.sideSlot}
           >
-            <Ionicons
-              name={iconName as keyof typeof Ionicons.glyphMap}
-              size={24}
-              color={focused ? colors.cta : colors.textMuted}
-            />
+            {route.name === "atividade" ? (
+              <MaterialIcons name="history" size={26} color={iconColor} />
+            ) : (
+              <Ionicons
+                name={iconName as keyof typeof Ionicons.glyphMap}
+                size={24}
+                color={iconColor}
+              />
+            )}
           </Pressable>
         );
       })}
@@ -107,9 +109,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="perfil"
+        name="atividade"
         options={{
-          title: "Perfil",
+          title: "Atividade",
         }}
       />
     </Tabs>
@@ -161,6 +163,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   homeBtnFocused: {
-    backgroundColor: colors.ctaPressed,
+    backgroundColor: colors.homeFocus,
+    shadowColor: colors.homeFocus,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
 });

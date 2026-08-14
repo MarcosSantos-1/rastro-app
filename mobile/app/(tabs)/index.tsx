@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HomeMiniMap, type HomeMiniMapDot } from "@/components/HomeMiniMap";
+import { StatusBucketIcon } from "@/components/StatusBucketIcon";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { homeStatusBucket } from "@/lib/denuncias";
@@ -189,7 +190,7 @@ export default function InicioScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
-              onPress={() => router.push("/(tabs)/perfil")}
+              onPress={() => router.push("/perfil")}
               accessibilityLabel="Meu perfil"
             >
               <Ionicons name="person" size={20} color={colors.text} />
@@ -208,17 +209,17 @@ export default function InicioScreen() {
             contentFit="cover"
           />
           <View style={styles.heroIconWrap}>
-            <Ionicons name="leaf" size={26} color="#fff" />
+            <Ionicons name="leaf" size={22} color="#fff" />
           </View>
           <View style={styles.heroCamBtn}>
-            <Ionicons name="camera" size={22} color={colors.cta} />
+            <Ionicons name="camera" size={19} color={colors.cta} />
           </View>
         </Pressable>
 
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Meus registros</Text>
           <Pressable
-            onPress={() => router.push("/meus-registros")}
+            onPress={() => router.push("/(tabs)/atividade")}
             hitSlop={8}
             accessibilityLabel="Ver todos os registros"
           >
@@ -228,22 +229,22 @@ export default function InicioScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statCol}>
-            <View style={[styles.statIcon, { backgroundColor: colors.statusCyanSoft }]}>
-              <Ionicons name="send" size={18} color={colors.statusCyan} />
+            <View style={styles.statIcon}>
+              <StatusBucketIcon bucket="encaminhado" size={32} />
             </View>
             <Text style={styles.statNum}>{counts.encaminhados}</Text>
             <Text style={styles.statLabel}>Encaminhados</Text>
           </View>
           <View style={styles.statCol}>
-            <View style={[styles.statIcon, { backgroundColor: colors.statusOrangeSoft }]}>
-              <Ionicons name="construct" size={18} color={colors.statusOrange} />
+            <View style={styles.statIcon}>
+              <StatusBucketIcon bucket="em_execucao" size={32} />
             </View>
             <Text style={styles.statNum}>{counts.emExecucao}</Text>
             <Text style={styles.statLabel}>Em execução</Text>
           </View>
           <View style={styles.statCol}>
-            <View style={[styles.statIcon, { backgroundColor: colors.statusGreenSoft }]}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.statusGreen} />
+            <View style={styles.statIcon}>
+              <StatusBucketIcon bucket="resolvido" size={32} />
             </View>
             <Text style={styles.statNum}>{counts.resolvidos}</Text>
             <Text style={styles.statLabel}>Resolvidos</Text>
@@ -411,9 +412,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 16,
     left: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 41,
+    height: 41,
+    borderRadius: 12,
     backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
@@ -422,9 +423,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 14,
     bottom: 14,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 41,
+    height: 41,
+    borderRadius: 21,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
@@ -467,10 +468,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.ctaSoft,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },

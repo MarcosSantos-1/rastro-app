@@ -27,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: "light",
     newArchEnabled: true,
     ios: {
+      bundleIdentifier: "com.marcosv.rastro",
       supportsTablet: true,
       icon: "./assets/images/icon.png",
       infoPlist: {
@@ -36,6 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "O Rastro acessa a galeria para anexar fotos ao registro.",
         NSLocationWhenInUseUsageDescription:
           "O Rastro usa sua localização para mostrar ocorrências próximas e registrar denúncias georreferenciadas.",
+        ITSAppUsesNonExemptEncryption: false,
       },
       config: {
         googleMapsApiKey,

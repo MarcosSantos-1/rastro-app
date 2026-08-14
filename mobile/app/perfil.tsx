@@ -105,6 +105,14 @@ export default function PerfilScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.hero, { paddingTop: insets.top + 20 }]}>
+          <Pressable
+            style={[styles.backBtn, { top: insets.top + 8 }]}
+            onPress={() => router.back()}
+            accessibilityLabel="Voltar"
+          >
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </Pressable>
+
           <View style={styles.avatarRing}>
             <View style={styles.avatar}>
               <Ionicons name="person" size={40} color={colors.cta} />
@@ -270,6 +278,15 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 28,
     alignItems: "center",
   },
+  backBtn: {
+    position: "absolute",
+    left: 12,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
   avatarRing: {
     width: 96,
     height: 96,
@@ -316,11 +333,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 14,
-  },
-  clearText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 13,
-    fontWeight: "600",
   },
   body: {
     paddingHorizontal: 20,

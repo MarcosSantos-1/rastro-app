@@ -7,6 +7,7 @@ export const colors = {
   border: "#d4e8dc",
   cta: "#2a925d",
   ctaPressed: "#227a4d",
+  homeFocus: "#48b07a",
   ctaText: "#ffffff",
   ctaSoft: "rgba(42, 146, 93, 0.12)",
   pinBlue: "#2563eb",

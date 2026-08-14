@@ -107,16 +107,16 @@ function AppShell() {
               animation: "slide_from_right",
             }}
           />
-          <Stack.Screen name="termos" />
-          <Stack.Screen name="privacidade" />
-          <Stack.Screen name="sobre" />
           <Stack.Screen
-            name="meus-registros"
+            name="perfil"
             options={{
               presentation: "card",
               animation: "slide_from_right",
             }}
           />
+          <Stack.Screen name="termos" />
+          <Stack.Screen name="privacidade" />
+          <Stack.Screen name="sobre" />
           <Stack.Screen
             name="registro"
             options={{
