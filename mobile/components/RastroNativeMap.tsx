@@ -12,6 +12,7 @@ import {
 import { Platform, StyleSheet, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import { colors } from "@/constants/colors";
+import { useRastroTheme } from "@/contexts/ThemeContext";
 import { MAP_RADIUS_M } from "@/lib/submit-denuncia";
 
 export type RastroMapMarkerKind = "ecoponto" | "pendente" | "resolvido";
@@ -58,6 +59,19 @@ function regionForRadius(lat: number, lng: number, meters: number): Region {
     longitudeDelta,
   };
 }
+
+/** Verde-preto alinhado à paleta dark — sem cinza invertido. */
+const DARK_MAP_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#0d1f16" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#7FA391" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#07130D" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1a3326" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8aa898" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#07130D" }] },
+];
 
 function kindColor(kind: RastroMapMarkerKind): string {
   if (kind === "ecoponto") return colors.pinBlue;
@@ -107,6 +121,7 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
     },
     ref,
   ) {
+    const { colors: theme, isDark } = useRastroTheme();
     const mapRef = useRef<MapView>(null);
     const didInitialFocus = useRef(false);
     const readyOnce = useRef(false);
@@ -177,7 +192,7 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
     };
 
     return (
-      <View style={styles.wrap}>
+      <View style={[styles.wrap, { backgroundColor: theme.bg }]}>
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -190,9 +205,11 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
           pitchEnabled={false}
           toolbarEnabled={false}
           moveOnMarkerPress={false}
-          loadingEnabled
-          loadingIndicatorColor={colors.cta}
-          loadingBackgroundColor={colors.bg}
+          loadingEnabled={false}
+          loadingIndicatorColor={theme.cta}
+          loadingBackgroundColor={theme.bg}
+          userInterfaceStyle={isDark ? "dark" : "light"}
+          customMapStyle={isDark ? DARK_MAP_STYLE : []}
           onMapReady={handleMapReady}
           onPress={() => onMapPress?.()}
         >
@@ -223,7 +240,7 @@ export const RastroNativeMap = forwardRef<RastroNativeMapHandle, RastroNativeMap
 );
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   map: { ...StyleSheet.absoluteFillObject },
   pinWrap: {
     alignItems: "center",

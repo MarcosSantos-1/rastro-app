@@ -1,4 +1,4 @@
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -15,8 +15,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBucketIcon } from "@/components/StatusBucketIcon";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRastroTheme, useThemedStyles } from "@/contexts/ThemeContext";
 import {
   CATEGORIA_LABEL,
   HOME_STATUS_LABEL,
@@ -88,6 +91,8 @@ function FeedCard({
   const categoria = CATEGORIA_LABEL[item.categoria as DenunciaCategoria] ?? item.categoria;
   const observacao = item.observacao?.trim() ?? "";
   const [page, setPage] = useState(0);
+  const { colors } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <View style={styles.card}>
@@ -167,6 +172,7 @@ function PhotoViewer({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const startX = (viewer?.index ?? 0) * width;
+  const styles = useThemedStyles(createStyles);
 
   if (!viewer) return null;
 
@@ -199,6 +205,8 @@ function PhotoViewer({
 }
 
 export default function AtividadeScreen() {
+  const { colors } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const photoWidth = width - 32;
@@ -269,7 +277,7 @@ export default function AtividadeScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <MaterialIcons name="history" size={40} color={colors.cta} />
+              <Ionicons name="document-text-outline" size={40} color={colors.cta} />
               <Text style={styles.emptyTitle}>Nenhuma atividade ainda</Text>
               <Text style={styles.emptyBody}>
                 Quando você registrar uma ocorrência, a foto, o status e o local aparecem aqui.
@@ -291,25 +299,26 @@ export default function AtividadeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.bg,
     paddingHorizontal: 20,
     paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    zIndex: 2,
   },
   headerTitle: {
+    ...typography.display,
     fontSize: 26,
-    fontWeight: "800",
-    color: colors.text,
   },
   headerHint: {
     marginTop: 2,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
-    fontWeight: "600",
   },
   centered: {
     flex: 1,
@@ -323,12 +332,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyTitle: {
+    ...typography.title,
     fontSize: 18,
-    fontWeight: "800",
-    color: colors.text,
     marginTop: 8,
   },
   emptyBody: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
@@ -345,8 +354,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   emptyCtaText: {
+    fontFamily: fonts.bodySemi,
     color: colors.ctaText,
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 14,
   },
   card: {
@@ -356,11 +366,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    ...shadows.card,
   },
   photo: {
     aspectRatio: 4 / 3,
@@ -375,6 +381,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   photoPlaceholderText: {
+    fontFamily: fonts.bodySemi,
     fontSize: 13,
     fontWeight: "600",
     color: colors.textMuted,
@@ -415,24 +422,27 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   statusLabel: {
+    fontFamily: fonts.bodySemi,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "600",
     color: colors.text,
   },
   statusDiscarded: {
     color: colors.danger,
   },
   time: {
+    ...typography.data,
     fontSize: 12,
-    fontWeight: "600",
     color: colors.textMuted,
   },
   caption: {
+    fontFamily: fonts.bodySemi,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   observacao: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.text,
@@ -444,6 +454,7 @@ const styles = StyleSheet.create({
   },
   location: {
     flex: 1,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,
@@ -462,4 +473,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+  });
+}

@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: "rastro",
-    userInterfaceStyle: "light",
+    userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
       bundleIdentifier: "com.marcosv.rastro",
@@ -46,7 +46,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       icon: "./assets/images/icon.png",
       adaptiveIcon: {
-        backgroundColor: "#f7faf8",
+        backgroundColor: "#F3F6F4",
         foregroundImage: "./assets/images/android-icon-foreground.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
@@ -81,7 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           image: "./assets/images/rastro_letter_splash.png",
           imageWidth: 180,
           resizeMode: "contain",
-          backgroundColor: "#f7faf8",
+          backgroundColor: "#F3F6F4",
         },
       ],
       [

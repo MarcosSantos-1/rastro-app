@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useFocusEffect, useNavigation } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -13,9 +13,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HomeMiniMap, type HomeMiniMapDot } from "@/components/HomeMiniMap";
+import { ScreenBackground } from "@/components/ScreenBackground";
 import { StatusBucketIcon } from "@/components/StatusBucketIcon";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRastroTheme } from "@/contexts/ThemeContext";
 import { homeStatusBucket } from "@/lib/denuncias";
 import { distanceMeters, withTimeout } from "@/lib/geo";
 import { listDenunciasNear, listMinhasDenuncias, MAP_RADIUS_M } from "@/lib/submit-denuncia";
@@ -56,6 +60,8 @@ const MOCK_NOTIFS = [
 export default function InicioScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { colors, isDark } = useRastroTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const scrollRef = useRef<ScrollView>(null);
   const { user, ensureAnonymous } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -168,36 +174,45 @@ export default function InicioScreen() {
 
   return (
     <View style={styles.root}>
+      <ScreenBackground />
+      <View style={[styles.headerRow, { paddingTop: insets.top + 12 }]}>
+        <Image
+          source={
+            isDark
+              ? require("@/assets/images/rastro_letter_white.png")
+              : require("@/assets/images/rastro_letter.png")
+          }
+          style={styles.letterLogo}
+          contentFit="contain"
+          accessibilityLabel="Rastro"
+        />
+        <View style={styles.headerActions}>
+          <Pressable
+            style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
+            onPress={() => setNotifOpen(true)}
+            accessibilityLabel="Notificações"
+          >
+            <Ionicons name="notifications" size={20} color={colors.text} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
+            onPress={() => router.push("/perfil")}
+            accessibilityLabel="Meu perfil"
+          >
+            <Ionicons name="person" size={20} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={{
-          paddingTop: insets.top + 25,
+          paddingTop: 8,
           paddingBottom: fabBottom + 80,
           paddingHorizontal: 20,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerRow}>
-          <Text style={styles.greeting}>Olá!</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
-              onPress={() => setNotifOpen(true)}
-              accessibilityLabel="Notificações"
-            >
-              <Ionicons name="notifications" size={20} color={colors.text} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
-              onPress={() => router.push("/perfil")}
-              accessibilityLabel="Meu perfil"
-            >
-              <Ionicons name="person" size={20} color={colors.text} />
-            </Pressable>
-          </View>
-        </View>
-
         <Pressable
           style={styles.hero}
           onPress={() => router.push("/registro")}
@@ -351,7 +366,10 @@ export default function InicioScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -363,13 +381,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 25,
-    paddingTop: 5,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: "transparent",
+    zIndex: 2,
   },
-  greeting: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: colors.text,
+  letterLogo: {
+    width: 188,
+    height: 46,
   },
   headerActions: {
     flexDirection: "row",
@@ -385,11 +404,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    ...shadows.cardSoft,
   },
   headerBtnPressed: {
     opacity: 0.82,
@@ -398,11 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: "hidden",
     backgroundColor: colors.bgElevated,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    ...shadows.card,
   },
   heroImage: {
     width: "100%",
@@ -426,14 +437,10 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 21,
-    backgroundColor: "#fff",
+    backgroundColor: isDark ? colors.bg : "#fff",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    ...shadows.cardSoft,
   },
   sectionHead: {
     marginTop: 22,
@@ -443,13 +450,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   sectionTitle: {
+    ...typography.title,
     fontSize: 18,
-    fontWeight: "800",
-    color: colors.text,
   },
   verTodos: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.cta,
   },
   statsRow: {
@@ -461,6 +468,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 14,
+    ...shadows.card,
   },
   statCol: {
     flex: 1,
@@ -474,11 +482,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statNum: {
+    ...typography.data,
     fontSize: 20,
-    fontWeight: "800",
-    color: colors.text,
   },
   statLabel: {
+    fontFamily: fonts.bodySemi,
     fontSize: 11,
     fontWeight: "600",
     color: colors.textMuted,
@@ -496,11 +504,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    ...shadows.card,
   },
   nearLeft: {
     flex: 1.15,
@@ -517,9 +521,8 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   nearTitle: {
+    ...typography.title,
     fontSize: 15,
-    fontWeight: "800",
-    color: colors.text,
   },
   nearLine: {
     flexDirection: "row",
@@ -538,12 +541,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   nearCount: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "600",
     color: colors.text,
   },
   nearHint: {
     marginTop: 1,
+    fontFamily: fonts.body,
     fontSize: 11,
     color: colors.textMuted,
     opacity: 0.75,
@@ -555,7 +560,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "rgba(255,255,255,0.94)",
+    backgroundColor: isDark ? "rgba(7,19,13,0.92)" : "rgba(255,255,255,0.94)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -563,19 +568,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   verMapaText: {
+    fontFamily: fonts.bodySemi,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.cta,
   },
   bannerWrap: {
     borderRadius: 24,
     overflow: "hidden",
     backgroundColor: colors.bgElevated,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    ...shadows.card,
   },
   bannerImage: {
     width: "100%",
@@ -592,6 +594,7 @@ const styles = StyleSheet.create({
     padding: 16,
     maxHeight: "70%",
     zIndex: 2,
+    ...shadows.card,
   },
   notifHead: {
     flexDirection: "row",
@@ -600,9 +603,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   notifTitle: {
+    ...typography.title,
     fontSize: 17,
-    fontWeight: "800",
-    color: colors.text,
   },
   notifItem: {
     flexDirection: "row",
@@ -622,17 +624,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   notifItemTitle: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   notifItemBody: {
     marginTop: 3,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,
   },
   notifItemTime: {
+    ...typography.data,
     marginTop: 4,
     fontSize: 11,
     color: colors.textMuted,
@@ -646,14 +651,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.cta,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    ...shadows.fab,
     zIndex: 30,
   },
   fabPressed: {
     backgroundColor: colors.ctaPressed,
   },
-});
+  });
+}

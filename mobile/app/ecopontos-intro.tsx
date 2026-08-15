@@ -3,11 +3,15 @@ import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
+import { useThemedStyles } from "@/contexts/ThemeContext";
 import { setEcopontosIntroSeen } from "@/lib/ecopontos-intro";
 
 export default function EcopontosIntroScreen() {
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(createStyles);
   const [busy, setBusy] = useState(false);
 
   const finish = useCallback(async () => {
@@ -71,7 +75,10 @@ export default function EcopontosIntroScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#0f172a",
@@ -99,6 +106,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 22,
     paddingBottom: 22,
+    ...shadows.card,
   },
   badge: {
     alignSelf: "flex-start",
@@ -109,17 +117,17 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   badgeText: {
+    ...typography.eyebrow,
     color: "#fff",
-    fontWeight: "800",
     fontSize: 12,
   },
   title: {
+    ...typography.display,
     fontSize: 24,
-    fontWeight: "800",
-    color: colors.text,
   },
   body: {
     marginTop: 10,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 23,
     color: colors.textMuted,
@@ -138,8 +146,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   btnText: {
+    fontFamily: fonts.bodySemi,
     color: colors.ctaText,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
-});
+  });
+}

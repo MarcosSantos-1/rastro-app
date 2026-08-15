@@ -4,10 +4,15 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
+import { useRastroTheme, useThemedStyles } from "@/contexts/ThemeContext";
 
 export default function SobreScreen() {
   const insets = useSafeAreaInsets();
+  const { isDark } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const version =
     Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "1.0.0";
 
@@ -23,7 +28,11 @@ export default function SobreScreen() {
 
       <View style={styles.body}>
         <Image
-          source={require("@/assets/images/rastro_letter_padded.png")}
+          source={
+            isDark
+              ? require("@/assets/images/rastro_letter_white_padded.png")
+              : require("@/assets/images/rastro_letter_padded.png")
+          }
           style={styles.logo}
           contentFit="contain"
         />
@@ -58,7 +67,10 @@ export default function SobreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: {
     backgroundColor: colors.cta,
@@ -77,8 +89,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
+    ...typography.title,
     fontSize: 17,
-    fontWeight: "800",
     color: "#fff",
   },
   body: {
@@ -93,12 +105,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   version: {
+    ...typography.data,
     fontSize: 13,
-    fontWeight: "700",
     color: colors.cta,
     marginBottom: 18,
   },
   lead: {
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 23,
     color: colors.textMuted,
@@ -116,6 +129,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.cardSoft,
   },
   pointIcon: {
     width: 36,
@@ -127,6 +141,7 @@ const styles = StyleSheet.create({
   },
   pointText: {
     flex: 1,
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
     fontWeight: "600",
     color: colors.text,
@@ -134,9 +149,11 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: "auto",
     marginBottom: 8,
+    fontFamily: fonts.bodySemi,
     fontSize: 13,
     fontWeight: "600",
     color: colors.textMuted,
     textAlign: "center",
   },
-});
+  });
+}

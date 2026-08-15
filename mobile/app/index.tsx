@@ -1,7 +1,7 @@
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { colors } from "@/constants/colors";
+import { useRastroTheme } from "@/contexts/ThemeContext";
 import { isOnboardingCompleted } from "@/lib/onboarding";
 
 /**
@@ -10,6 +10,7 @@ import { isOnboardingCompleted } from "@/lib/onboarding";
  * até saber se o onboarding já foi feito.
  */
 export default function IndexGate() {
+  const { colors } = useRastroTheme();
   const [ready, setReady] = useState(false);
   const [done, setDone] = useState(false);
 

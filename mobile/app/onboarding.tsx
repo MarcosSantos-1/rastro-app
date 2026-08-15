@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
+import { shadows } from "@/constants/shadows";
+import { fonts, typography } from "@/constants/typography";
 import { setOnboardingCompleted } from "@/lib/onboarding";
 
 type Slide = {
@@ -237,8 +239,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   skip: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#ffffff",
   },
   skipPlaceholder: {
@@ -250,11 +253,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 36,
     paddingHorizontal: 28,
     paddingTop: 22,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: -8 },
-    elevation: 12,
+    ...shadows.card,
   },
   dots: {
     flexDirection: "row",
@@ -274,13 +273,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cta,
   },
   cardTitle: {
+    ...typography.display,
     fontSize: 24,
-    fontWeight: "800",
-    color: colors.text,
     textAlign: "center",
   },
   cardBody: {
     marginTop: 8,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 22,
     color: colors.textMuted,
@@ -291,6 +290,7 @@ const styles = StyleSheet.create({
   swipeHint: {
     marginTop: 22,
     textAlign: "center",
+    fontFamily: fonts.bodySemi,
     fontSize: 13,
     fontWeight: "600",
     color: colors.textMuted,
@@ -299,13 +299,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   lastTitle: {
+    ...typography.display,
     fontSize: 28,
-    fontWeight: "800",
     color: "#ffffff",
     textAlign: "center",
   },
   lastBody: {
     marginTop: 10,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
     color: "rgba(255,255,255,0.9)",
@@ -327,8 +328,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   btnText: {
+    fontFamily: fonts.bodySemi,
     color: colors.ctaText,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

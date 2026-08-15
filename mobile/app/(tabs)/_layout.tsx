@@ -1,8 +1,9 @@
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { useRastroTheme } from "@/contexts/ThemeContext";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 export const unstable_settings = {
@@ -12,9 +13,21 @@ export const unstable_settings = {
 function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 10);
+  const { colors, isDark } = useRastroTheme();
+  const shadows = makeShadows(colors, isDark);
 
   return (
-    <View style={[styles.bar, { paddingBottom: bottomPad }]}>
+    <View
+      style={[
+        styles.bar,
+        {
+          paddingBottom: bottomPad,
+          backgroundColor: isDark ? "rgba(7,19,13,0.92)" : "rgba(255,255,255,0.9)",
+          borderTopColor: colors.border,
+          ...shadows.cardSoft,
+        },
+      ]}
+    >
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const focused = state.index === index;
@@ -52,14 +65,23 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               accessibilityLabel={label}
               style={styles.homeSlot}
             >
-              <View style={[styles.homeBtn, focused && styles.homeBtnFocused]}>
+              <View
+                style={[
+                  styles.homeBtn,
+                  shadows.fab,
+                  {
+                    backgroundColor: focused ? colors.homeFocus : colors.cta,
+                    borderColor: isDark ? colors.bg : "#fff",
+                  },
+                ]}
+              >
                 <Ionicons name="home" size={26} color="#fff" />
               </View>
             </Pressable>
           );
         }
 
-        const iconColor = focused ? colors.cta : colors.textMuted;
+        const iconColor = focused ? colors.homeFocus : colors.textMuted;
 
         return (
           <Pressable
@@ -71,7 +93,11 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             style={styles.sideSlot}
           >
             {route.name === "atividade" ? (
-              <MaterialIcons name="history" size={26} color={iconColor} />
+              <Ionicons
+                name={focused ? "document-text" : "document-text-outline"}
+                size={24}
+                color={iconColor}
+              />
             ) : (
               <Ionicons
                 name={iconName as keyof typeof Ionicons.glyphMap}
@@ -87,6 +113,7 @@ function RastroTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 }
 
 export default function TabsLayout() {
+  const { colors } = useRastroTheme();
   return (
     <Tabs
       initialRouteName="index"
@@ -94,6 +121,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen
@@ -123,16 +151,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-around",
-    backgroundColor: colors.bgElevated,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopWidth: 1,
     paddingTop: 10,
     paddingHorizontal: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 12,
   },
   sideSlot: {
     flex: 1,
@@ -151,22 +172,8 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 4,
-    borderColor: colors.bgElevated,
-    shadowColor: colors.cta,
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  homeBtnFocused: {
-    backgroundColor: colors.homeFocus,
-    shadowColor: colors.homeFocus,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
   },
 });

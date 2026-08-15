@@ -10,10 +10,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
+import { useRastroTheme, useThemedStyles } from "@/contexts/ThemeContext";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -123,7 +128,7 @@ export default function LoginScreen() {
             onPress={() => onSocial("Apple")}
             accessibilityLabel="Entrar com Apple"
           >
-            <Ionicons name="logo-apple" size={26} color="#111" />
+            <Ionicons name="logo-apple" size={26} color={isDark ? "#fff" : "#111"} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.socialBtn, pressed && styles.socialPressed]}
@@ -138,7 +143,10 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -160,8 +168,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
+    ...typography.title,
     fontSize: 18,
-    fontWeight: "800",
     color: "#fff",
   },
   body: {
@@ -170,20 +178,21 @@ const styles = StyleSheet.create({
     paddingTop: 28,
   },
   welcome: {
+    ...typography.display,
     fontSize: 26,
-    fontWeight: "800",
-    color: colors.text,
   },
   hint: {
     marginTop: 8,
     marginBottom: 24,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
   },
   label: {
+    fontFamily: fonts.bodySemi,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
     marginBottom: 8,
     marginTop: 4,
@@ -195,6 +204,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.text,
     marginBottom: 14,
@@ -217,8 +227,9 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   forgot: {
+    fontFamily: fonts.bodySemi,
     color: colors.cta,
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 13,
   },
   primaryBtn: {
@@ -231,9 +242,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ctaPressed,
   },
   primaryBtnText: {
+    fontFamily: fonts.bodySemi,
     color: "#fff",
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   dividerRow: {
     flexDirection: "row",
@@ -247,6 +259,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   dividerText: {
+    fontFamily: fonts.bodySemi,
     fontSize: 12,
     color: colors.textMuted,
     fontWeight: "600",
@@ -265,6 +278,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    ...shadows.cardSoft,
   },
   socialPressed: {
     backgroundColor: colors.ctaSoft,
@@ -272,6 +286,7 @@ const styles = StyleSheet.create({
   xLogo: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#111",
+    color: isDark ? "#fff" : "#111",
   },
-});
+  });
+}

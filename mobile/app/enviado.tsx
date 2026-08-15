@@ -2,10 +2,13 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { fonts, makeTypography } from "@/constants/typography";
+import { useThemedStyles } from "@/contexts/ThemeContext";
 
 export default function EnviadoScreen() {
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <View
@@ -49,7 +52,9 @@ export default function EnviadoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  const typography = makeTypography(colors);
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -67,14 +72,14 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
   },
   title: {
+    ...typography.display,
     marginTop: 8,
     fontSize: 24,
-    fontWeight: "800",
-    color: colors.text,
     textAlign: "center",
   },
   body: {
     marginTop: 8,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 22,
     color: colors.textMuted,
@@ -94,9 +99,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ctaPressed,
   },
   btnPrimaryText: {
+    fontFamily: fonts.bodySemi,
     color: colors.ctaText,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   btnSecondary: {
     paddingVertical: 14,
@@ -107,8 +113,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   btnSecondaryText: {
+    fontFamily: fonts.bodySemi,
     color: colors.textMuted,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
-});
+  });
+}

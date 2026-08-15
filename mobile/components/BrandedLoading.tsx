@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, StyleSheet, View } from "react-native";
-import { colors } from "@/constants/colors";
+import { useRastroTheme } from "@/contexts/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const LOGO_W = Math.min(width * 0.5, 220);
@@ -72,11 +72,13 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
     });
   }, [visible, fadeOut, opacity]);
 
+  const { colors } = useRastroTheme();
+
   if (!mounted) return null;
 
   return (
     <Animated.View
-      style={[styles.overlay, { opacity }]}
+      style={[styles.overlay, { opacity, backgroundColor: colors.bg }]}
       pointerEvents={visible ? "auto" : "none"}
     >
       <Animated.Image
@@ -86,7 +88,7 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
       />
       <View style={styles.dotsRow}>
         {[dot1, dot2, dot3].map((dot, i) => (
-          <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
+          <Animated.View key={i} style={[styles.dot, { opacity: dot, backgroundColor: colors.cta }]} />
         ))}
       </View>
     </Animated.View>
@@ -96,7 +98,6 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.bg,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,
@@ -114,6 +115,5 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.cta,
   },
 });

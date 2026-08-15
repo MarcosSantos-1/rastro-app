@@ -21,8 +21,11 @@ import {
   type RastroMapMarker,
 } from "@/components/RastroNativeMap";
 import { BrandedLoading } from "@/components/BrandedLoading";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRastroTheme, useThemedStyles } from "@/contexts/ThemeContext";
 import { distanceMeters, withTimeout } from "@/lib/geo";
 import {
   hasSeenEcopontosIntro,
@@ -160,6 +163,8 @@ async function resolveUserLocation(): Promise<{ lat: number; lng: number }> {
 }
 
 export default function MapaScreen() {
+  const { colors, isDark } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const mapRef = useRef<RastroNativeMapHandle>(null);
   const { ensureAnonymous, ready } = useAuth();
@@ -295,7 +300,11 @@ export default function MapaScreen() {
         <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
           <View style={styles.brandWrap}>
             <Image
-              source={require("@/assets/images/rastro_letter_padded.png")}
+              source={
+                isDark
+                  ? require("@/assets/images/rastro_letter_white_padded.png")
+                  : require("@/assets/images/rastro_letter_padded.png")
+              }
               style={styles.brandLetter}
               contentFit="contain"
             />
@@ -507,7 +516,10 @@ export default function MapaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -526,15 +538,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   brandWrap: {
-    backgroundColor: "#fafafa",
+    backgroundColor: colors.bgElevated,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
+    ...shadows.cardSoft,
   },
   brandLetter: {
     width: 148,
@@ -553,12 +561,14 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   errorText: {
+    fontFamily: fonts.body,
     color: colors.danger,
     fontSize: 14,
   },
   retry: {
+    fontFamily: fonts.bodySemi,
     color: colors.cta,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   focusBtn: {
     position: "absolute",
@@ -570,11 +580,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    ...shadows.cardSoft,
     zIndex: 20,
   },
   mapFab: {
@@ -587,11 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.cta,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    ...shadows.fab,
     zIndex: 20,
   },
   mapFabPressed: {
@@ -603,11 +605,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: 20,
     paddingTop: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: -8 },
-    elevation: 12,
+    ...shadows.card,
     minHeight: 120,
   },
   handle: {
@@ -625,13 +623,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sheetLabel: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
   },
   sheetCount: {
+    ...typography.data,
     fontSize: 18,
-    fontWeight: "800",
-    color: colors.text,
     marginTop: 2,
   },
   legend: {
@@ -649,6 +647,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
+    fontFamily: fonts.bodySemi,
     fontSize: 11,
     fontWeight: "600",
     color: colors.textMuted,
@@ -675,8 +674,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   statusChipTextOn: {
+    fontFamily: fonts.bodySemi,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#fff",
   },
   distanceChip: {
@@ -689,8 +689,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   distanceText: {
+    ...typography.data,
     fontSize: 13,
-    fontWeight: "800",
     color: colors.cta,
   },
   navRow: {
@@ -718,8 +718,9 @@ const styles = StyleSheet.create({
     height: 28,
   },
   navLabel: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "600",
     color: colors.text,
   },
   closeBtn: {
@@ -741,9 +742,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   detailTitle: {
+    ...typography.title,
     fontSize: 20,
-    fontWeight: "800",
-    color: colors.text,
     marginBottom: 12,
   },
   metaList: {
@@ -763,12 +763,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   metaLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textMuted,
+    ...typography.eyebrow,
+    fontSize: 10,
   },
   metaValue: {
     marginTop: 2,
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
     fontWeight: "600",
     color: colors.text,
@@ -803,4 +803,5 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "80%",
   },
-});
+  });
+}

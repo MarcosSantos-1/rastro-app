@@ -2,10 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { fonts, makeTypography } from "@/constants/typography";
+import { useThemedStyles } from "@/contexts/ThemeContext";
 
 export default function TermosScreen() {
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <View style={styles.root}>
@@ -60,7 +63,9 @@ export default function TermosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  const typography = makeTypography(colors);
+  return StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: {
     backgroundColor: colors.cta,
@@ -79,17 +84,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
+    ...typography.title,
     fontSize: 17,
-    fontWeight: "800",
     color: "#fff",
   },
   updated: {
+    ...typography.data,
     fontSize: 12,
-    fontWeight: "700",
     color: colors.cta,
     marginBottom: 12,
   },
   lead: {
+    fontFamily: fonts.bodySemi,
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "600",
@@ -97,16 +103,17 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   h2: {
+    ...typography.title,
     fontSize: 16,
-    fontWeight: "800",
-    color: colors.text,
     marginBottom: 8,
     marginTop: 8,
   },
   p: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 22,
     color: colors.textMuted,
     marginBottom: 16,
   },
-});
+  });
+}

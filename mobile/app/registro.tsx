@@ -17,8 +17,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRastroTheme, useThemedStyles } from "@/contexts/ThemeContext";
 import {
   CATEGORIA_LABEL,
   type DenunciaCategoria,
@@ -52,6 +55,8 @@ const CATEGORIAS: CategoryOption[] = [
 ];
 
 export default function RegistroScreen() {
+  const { colors } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { ensureAnonymous } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
@@ -437,10 +442,12 @@ export default function RegistroScreen() {
   );
 }
 
-const PAGE_BG = "#f7f9f8";
-const SURFACE = "#ffffff";
-
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  const PAGE_BG = colors.bg;
+  const SURFACE = colors.bgElevated;
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: PAGE_BG,
@@ -463,9 +470,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
+    ...typography.title,
     fontSize: 18,
-    fontWeight: "800",
-    color: colors.text,
   },
   scrollFlex: {
     flex: 1,
@@ -511,11 +517,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   photoTitle: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   photoHint: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
   },
@@ -541,8 +549,9 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   photoBtnText: {
+    fontFamily: fonts.bodySemi,
     color: colors.cta,
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 13,
   },
   galleryBtnEmpty: {
@@ -576,6 +585,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
+    ...shadows.cardSoft,
   },
   locIcon: {
     width: 40,
@@ -589,11 +599,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locTitle: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   locAddress: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
@@ -605,13 +617,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   gpsText: {
+    ...typography.data,
     fontSize: 11,
-    fontWeight: "700",
     color: colors.cta,
   },
   section: {
+    fontFamily: fonts.bodySemi,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
     marginBottom: -8,
   },
@@ -640,6 +653,7 @@ const styles = StyleSheet.create({
     borderColor: colors.cta,
   },
   chipText: {
+    fontFamily: fonts.bodySemi,
     color: colors.textMuted,
     fontWeight: "600",
     fontSize: 12,
@@ -657,6 +671,7 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    fontFamily: fonts.body,
     color: colors.text,
     fontSize: 14,
   },
@@ -668,13 +683,14 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE,
     padding: 16,
     textAlignVertical: "top",
+    fontFamily: fonts.body,
     color: colors.text,
     fontSize: 14,
   },
   footer: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: PAGE_BG,
+    backgroundColor: colors.bg,
     paddingHorizontal: 20,
     paddingTop: 16,
   },
@@ -691,14 +707,17 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   sendText: {
+    fontFamily: fonts.bodySemi,
     color: colors.ctaText,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   footerHint: {
     marginTop: 8,
     textAlign: "center",
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
   },
-});
+  });
+}

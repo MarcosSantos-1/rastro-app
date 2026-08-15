@@ -16,7 +16,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@/constants/colors";
+import { type ThemeColors } from "@/constants/colors";
+import { makeShadows } from "@/constants/shadows";
+import { fonts, makeTypography } from "@/constants/typography";
+import { useRastroTheme, useThemedStyles } from "@/contexts/ThemeContext";
 import { clearOnboardingCompleted } from "@/lib/onboarding";
 
 const PROFILE_KEY = "rastro_profile_optional";
@@ -37,6 +40,8 @@ type SettingsRowProps = {
 };
 
 function SettingsRow({ icon, iconBg, label, hint, onPress, right, last }: SettingsRowProps) {
+  const { colors } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const content = (
     <>
       <View style={[styles.rowIcon, iconBg ? { backgroundColor: iconBg } : null]}>
@@ -67,6 +72,8 @@ function SettingsRow({ icon, iconBg, label, hint, onPress, right, last }: Settin
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const { colors, isDark, toggleScheme } = useRastroTheme();
+  const styles = useThemedStyles(createStyles);
   const [profile, setProfile] = useState<OptionalProfile>({});
   const [notifications, setNotifications] = useState(true);
 
@@ -138,7 +145,6 @@ export default function PerfilScreen() {
           <View style={styles.group}>
             <SettingsRow
               icon="notifications"
-              iconBg={colors.statusOrange}
               label="Notificações"
               hint="Avisos sobre status de ocorrências"
               right={
@@ -151,8 +157,20 @@ export default function PerfilScreen() {
               }
             />
             <SettingsRow
+              icon="moon"
+              label="Modo escuro"
+              hint="Verde-preto, como no documento de camadas"
+              right={
+                <Switch
+                  value={isDark}
+                  onValueChange={() => toggleScheme()}
+                  trackColor={{ false: colors.border, true: colors.cta }}
+                  thumbColor="#fff"
+                />
+              }
+            />
+            <SettingsRow
               icon="settings"
-              iconBg="#64748b"
               label="Configurações"
               hint="Localização, câmera e armazenamento"
               last
@@ -176,19 +194,16 @@ export default function PerfilScreen() {
           <View style={styles.group}>
             <SettingsRow
               icon="document-text"
-              iconBg={colors.pinBlue}
               label="Termos de uso"
               onPress={() => router.push("/termos")}
             />
             <SettingsRow
               icon="shield-checkmark"
-              iconBg={colors.statusGreen}
               label="Política de privacidade"
               onPress={() => router.push("/privacidade")}
             />
             <SettingsRow
               icon="chatbubbles"
-              iconBg={colors.statusCyan}
               label="Enviar feedback"
               hint="Conte o que podemos melhorar"
               onPress={() =>
@@ -199,14 +214,12 @@ export default function PerfilScreen() {
             />
             <SettingsRow
               icon="star"
-              iconBg={colors.pinAmber}
               label="Avaliar o app"
               hint="Rate us na loja"
               onPress={() => openPlaceholder("Avaliar o app")}
             />
             <SettingsRow
               icon="help-circle"
-              iconBg="#7c3aed"
               label="Central de ajuda"
               last
               onPress={() =>
@@ -221,14 +234,12 @@ export default function PerfilScreen() {
           <View style={styles.group}>
             <SettingsRow
               icon="information-circle"
-              iconBg={colors.cta}
               label="Sobre o Rastro"
               hint={`Versão ${version}`}
               onPress={() => router.push("/sobre")}
             />
             <SettingsRow
               icon="images"
-              iconBg={colors.statusCyan}
               label="Ver introdução"
               hint="Mostrar o onboarding de novo"
               last
@@ -251,7 +262,11 @@ export default function PerfilScreen() {
 
           <View style={styles.footerBrand}>
             <Image
-              source={require("@/assets/images/rastro_letter.png")}
+              source={
+                isDark
+                  ? require("@/assets/images/rastro_letter_white.png")
+                  : require("@/assets/images/rastro_letter.png")
+              }
               style={styles.footerLetter}
               contentFit="contain"
             />
@@ -262,7 +277,10 @@ export default function PerfilScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const typography = makeTypography(colors);
+  const shadows = makeShadows(colors, isDark);
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -306,13 +324,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   userName: {
+    ...typography.title,
     fontSize: 22,
-    fontWeight: "800",
     color: "#fff",
     textAlign: "center",
   },
   userEmail: {
     marginTop: 6,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: "rgba(255,255,255,0.85)",
     textAlign: "center",
@@ -330,8 +349,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   outlineBtnText: {
+    fontFamily: fonts.bodySemi,
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 14,
   },
   body: {
@@ -339,24 +359,16 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   section: {
+    ...typography.eyebrow,
     marginTop: 8,
     marginBottom: 10,
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
   group: {
     backgroundColor: colors.bgElevated,
     borderRadius: 18,
     overflow: "hidden",
     marginBottom: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    ...shadows.card,
   },
   row: {
     flexDirection: "row",
@@ -385,12 +397,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowLabel: {
+    fontFamily: fonts.bodySemi,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.text,
   },
   rowHint: {
     marginTop: 2,
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
   },
@@ -403,4 +417,5 @@ const styles = StyleSheet.create({
     width: 160,
     height: 42,
   },
-});
+  });
+}
