@@ -87,7 +87,7 @@ export default function RelatoriosPage() {
   return (
     <AppShell>
       <header className="mb-8">
-        <h1 className="font-display text-2xl font-bold tracking-tight lg:text-3xl">
+        <h1 className="font-display text-2xl font-black text-[var(--verde-esc)] lg:text-3xl">
           Relatórios
         </h1>
         <p className="mt-1 text-[var(--muted)]">
@@ -107,33 +107,33 @@ export default function RelatoriosPage() {
         <>
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <section className="rounded-2xl border border-[var(--border)] surface-card p-5">
-              <h2 className="text-sm font-semibold text-[var(--muted)]">Por status</h2>
+              <h2 className="font-eyebrow text-[var(--muted)]">Por status</h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {(
                   ["em_analise", "validada", "roteada", "descartada"] as DenunciaStatus[]
                 ).map((s) => (
                   <li key={s} className="flex justify-between">
                     <span>{STATUS_LABEL[s]}</span>
-                    <span className="tabular-nums font-semibold">{resumo.porStatus[s]}</span>
+                    <span className="font-data font-semibold">{resumo.porStatus[s]}</span>
                   </li>
                 ))}
               </ul>
             </section>
 
             <section className="rounded-2xl border border-[var(--border)] surface-card p-5">
-              <h2 className="text-sm font-semibold text-[var(--muted)]">Por categoria</h2>
+              <h2 className="font-eyebrow text-[var(--muted)]">Por categoria</h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {(Object.keys(CATEGORIA_LABEL) as DenunciaCategoria[]).map((c) => (
                   <li key={c} className="flex justify-between">
                     <span>{CATEGORIA_LABEL[c]}</span>
-                    <span className="tabular-nums font-semibold">{resumo.porCat[c]}</span>
+                    <span className="font-data font-semibold">{resumo.porCat[c]}</span>
                   </li>
                 ))}
               </ul>
             </section>
 
             <section className="rounded-2xl border border-[var(--border)] surface-card p-5 sm:col-span-2 lg:col-span-1">
-              <h2 className="text-sm font-semibold text-[var(--muted)]">Por município</h2>
+              <h2 className="font-eyebrow text-[var(--muted)]">Por município</h2>
               {resumo.porMunicipio.length === 0 ? (
                 <p className="mt-3 text-sm text-[var(--muted)]">Sem dados.</p>
               ) : (
@@ -141,7 +141,7 @@ export default function RelatoriosPage() {
                   {resumo.porMunicipio.map(([nome, n]) => (
                     <li key={nome} className="flex justify-between">
                       <span>{nome}</span>
-                      <span className="tabular-nums font-semibold">{n}</span>
+                      <span className="font-data font-semibold">{n}</span>
                     </li>
                   ))}
                 </ul>
@@ -160,7 +160,7 @@ export default function RelatoriosPage() {
             </InteractiveHoverButton>
             <span className="text-sm text-[var(--muted)]">
               {items.length} ocorrências · arquivo{" "}
-              <span className="font-mono text-xs">rastro-ocorrencias-….xlsx</span>
+              <span className="font-data text-xs">rastro-ocorrencias-….xlsx</span>
             </span>
           </div>
         </>

@@ -82,16 +82,32 @@ export function statusLabel(s: DenunciaStatus): string {
 export function statusBadgeClass(s: DenunciaStatus): string {
   switch (s) {
     case "roteada":
-      return "bg-emerald-600/20 text-emerald-800 dark:text-emerald-300";
+      return "text-[var(--accent)]";
     case "validada":
-      return "bg-green-500/20 text-green-700 dark:bg-green-500/25 dark:text-green-300";
+      return "text-[var(--accent-muted)]";
     case "em_analise":
     case "pendente":
-      return "bg-amber-500/15 text-amber-800 dark:text-amber-300";
+      return "text-[var(--ambar)]";
     case "descartada":
-      return "bg-red-600/20 text-red-700 dark:bg-red-500/25 dark:text-red-300";
+      return "text-red-700 dark:text-red-400";
     default:
-      return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400";
+      return "text-[var(--muted)]";
+  }
+}
+
+export function statusMarkClass(s: DenunciaStatus): string {
+  switch (s) {
+    case "roteada":
+      return "bg-[var(--accent)]";
+    case "validada":
+      return "bg-[var(--accent-muted)]";
+    case "em_analise":
+    case "pendente":
+      return "bg-[var(--ambar)]";
+    case "descartada":
+      return "bg-red-600 dark:bg-red-400";
+    default:
+      return "bg-[var(--muted)]";
   }
 }
 

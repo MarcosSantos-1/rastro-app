@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Outfit } from "next/font/google";
+import { Archivo, Martian_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/contexts/ThemeContext";
 import { AuthWebProvider } from "@/lib/contexts/AuthWebContext";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
   display: "swap",
 });
 
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-plex",
+const martianMono = Martian_Mono({
+  variable: "--font-martian",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
@@ -43,7 +44,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${outfit.variable} ${ibmPlexSans.variable} min-h-screen font-sans antialiased`}
+        className={`${archivo.variable} ${martianMono.variable} min-h-screen font-sans antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider>

@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/lib/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import { Moon, Sun } from "lucide-react";
+import { MdiIcon, mdiMoonWaningCrescent, mdiWhiteBalanceSunny } from "./mdi-icon";
 import { motion } from "framer-motion";
 
 export function ThemeToggler({ className }: { className?: string }) {
@@ -13,7 +13,7 @@ export function ThemeToggler({ className }: { className?: string }) {
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--accent-soft)]",
+        "relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--accent-soft)]",
         className,
       )}
       title={isDark ? "Usar tema claro" : "Usar tema escuro"}
@@ -27,7 +27,11 @@ export function ThemeToggler({ className }: { className?: string }) {
         transition={{ type: "spring", stiffness: 380, damping: 22 }}
         className="absolute inset-0 flex items-center justify-center"
       >
-        {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-rastro-600" />}
+        {isDark ? (
+          <MdiIcon path={mdiWhiteBalanceSunny} className="h-4 w-4 text-amber-400" />
+        ) : (
+          <MdiIcon path={mdiMoonWaningCrescent} className="h-4 w-4 text-rastro-600" />
+        )}
       </motion.span>
     </button>
   );

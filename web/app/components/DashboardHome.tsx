@@ -9,6 +9,7 @@ import { useDenuncias } from "@/lib/hooks/useDenuncias";
 import { useMemo } from "react";
 import { InteractiveHoverButton } from "./ui/interactive-hover-button";
 import { DashboardSkeleton } from "./ui/skeleton";
+import { CATEGORIA_MDI, MdiIcon } from "./ui/mdi-icon";
 import { cn } from "@/lib/utils";
 
 function DonutStatus({
@@ -45,7 +46,7 @@ function DonutStatus({
           />
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="font-display text-3xl font-bold tabular-nums text-rastro-600 dark:text-rastro-400">
+          <span className="font-data text-3xl font-semibold text-rastro-600 dark:text-rastro-400">
             {p}%
           </span>
           <span className="text-xs font-medium text-[var(--muted)]">{label}</span>
@@ -127,7 +128,7 @@ export function DashboardHome() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-[var(--foreground)] lg:text-4xl">
+        <h1 className="font-display text-3xl font-black text-[var(--verde-esc)] lg:text-4xl">
           Visão geral
         </h1>
         <p className="mt-2 text-[var(--muted)]">
@@ -158,7 +159,7 @@ export function DashboardHome() {
       </div>
 
       <div className="rounded-2xl border border-[var(--border)] surface-card p-6">
-        <p className="mb-4 text-sm font-medium text-[var(--muted)]">Taxa de roteamento</p>
+        <p className="mb-4 font-eyebrow text-[var(--muted)]">Taxa de roteamento</p>
         <DonutStatus
           pct={stats.pctRoteadas}
           label="roteadas"
@@ -167,7 +168,7 @@ export function DashboardHome() {
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium text-[var(--muted)]">Por categoria</p>
+        <p className="mb-3 font-eyebrow text-[var(--muted)]">Por categoria</p>
         <div className="grid gap-3 sm:grid-cols-3">
           {CAT_ORDER.map((c) => {
             const n = stats.porCategoria[c];
@@ -181,10 +182,11 @@ export function DashboardHome() {
                   CAT_STYLE[c],
                 )}
               >
-                <p className="text-xs font-semibold leading-snug opacity-95">
+                <p className="flex items-start gap-2 text-xs font-semibold leading-snug opacity-95">
+                  <MdiIcon path={CATEGORIA_MDI[c]} className="mt-0.5 h-4 w-4" />
                   {CATEGORIA_LABEL[c]}
                 </p>
-                <p className="mt-2 font-display text-3xl font-bold tabular-nums">{n}</p>
+                <p className="mt-2 font-data text-3xl font-semibold">{n}</p>
                 <p className="mt-1 text-[11px] opacity-90">{pct}% do total</p>
               </div>
             );
@@ -194,7 +196,7 @@ export function DashboardHome() {
 
       {stats.porMunicipio.length > 0 && (
         <div className="rounded-2xl border border-[var(--border)] surface-card p-6">
-          <p className="mb-4 text-sm font-medium text-[var(--muted)]">
+          <p className="mb-4 font-eyebrow text-[var(--muted)]">
             Densidade por município
           </p>
           <ul className="space-y-3">
@@ -205,7 +207,7 @@ export function DashboardHome() {
                 <li key={nome}>
                   <div className="mb-1 flex justify-between text-sm">
                     <span className="font-medium text-[var(--foreground)]">{nome}</span>
-                    <span className="tabular-nums text-[var(--muted)]">{n}</span>
+                    <span className="font-data text-[var(--muted)]">{n}</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]">
                     <div
@@ -221,7 +223,7 @@ export function DashboardHome() {
       )}
 
       <div className="flex flex-wrap gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--accent-soft)]/30 p-6">
-        <p className="w-full text-sm font-medium text-[var(--muted)]">Ações rápidas</p>
+        <p className="w-full font-eyebrow text-[var(--muted)]">Ações rápidas</p>
         <InteractiveHoverButton href="/painel">Ver ocorrências</InteractiveHoverButton>
         <InteractiveHoverButton href="/mapa" variant="secondary">
           Abrir mapa
@@ -237,8 +239,8 @@ export function DashboardHome() {
 function Kpi({ title, value, hint }: { title: string; value: string; hint: string }) {
   return (
     <div className="rounded-2xl border border-[var(--border)] surface-card p-6">
-      <p className="text-sm font-medium text-[var(--muted)]">{title}</p>
-      <p className="mt-2 font-display text-3xl font-bold tabular-nums text-rastro-600 dark:text-rastro-400">
+      <p className="font-eyebrow text-[var(--muted)]">{title}</p>
+      <p className="mt-2 font-data text-3xl font-semibold text-rastro-600 dark:text-rastro-400">
         {value}
       </p>
       <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>

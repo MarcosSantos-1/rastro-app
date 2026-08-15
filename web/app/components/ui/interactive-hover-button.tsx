@@ -24,13 +24,12 @@ export function InteractiveHoverButton(props: AsButton | AsLink) {
   const { children, className, variant = "primary" } = props;
 
   const styles = cn(
-    "group relative inline-flex h-11 items-center justify-center overflow-hidden rounded-xl px-5 text-sm font-semibold transition-all duration-300",
+    "group relative inline-flex h-11 items-center justify-center overflow-hidden rounded-full px-5 text-sm font-semibold transition-all duration-300",
     variant === "primary" &&
-      "bg-rastro-600 text-white shadow-sm hover:bg-rastro-700 dark:bg-rastro-500 dark:hover:bg-rastro-400 dark:text-zinc-950",
+      "bg-rastro-600 text-white shadow-[var(--shadow-cta)] hover:bg-rastro-700",
     variant === "secondary" &&
       "border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]",
-    variant === "danger" &&
-      "bg-red-600/90 text-white hover:bg-red-600",
+    variant === "danger" && "bg-red-600/90 text-white hover:bg-red-600",
     className,
   );
 
@@ -46,8 +45,8 @@ export function InteractiveHoverButton(props: AsButton | AsLink) {
       <span
         aria-hidden
         className={cn(
-          "absolute inset-0 -z-0 scale-x-0 transition-transform duration-300 group-hover:scale-x-100 origin-left",
-          variant === "primary" && "bg-rastro-700/40 dark:bg-rastro-600/30",
+          "absolute inset-0 -z-0 origin-left scale-x-0 transition-transform duration-300 group-hover:scale-x-100",
+          variant === "primary" && "bg-rastro-700/40",
           variant === "secondary" && "bg-[var(--accent-soft)]",
           variant === "danger" && "bg-red-700/40",
         )}

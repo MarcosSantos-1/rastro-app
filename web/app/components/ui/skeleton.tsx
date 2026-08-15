@@ -6,11 +6,16 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-xl bg-gradient-to-r from-[var(--border)] via-[var(--accent-soft)] to-[var(--border)] bg-[length:200%_100%]",
+        "relative overflow-hidden rounded-xl bg-[rgba(63,191,124,0.12)]",
         className,
       )}
-      style={{ animation: "skeleton-shimmer 1.6s ease-in-out infinite" }}
-    />
+    >
+      <span
+        aria-hidden
+        className="skeleton-sweep absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(63,191,124,0.5)] to-transparent"
+        style={{ animation: "skeleton-shimmer 1.5s linear infinite" }}
+      />
+    </div>
   );
 }
 
@@ -127,11 +132,7 @@ export function LoginSkeleton() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-12 w-12 rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-28" />
-            <Skeleton className="h-3 w-40" />
-          </div>
+          <Skeleton className="h-9 w-40 rounded-md" />
         </div>
         <div className="space-y-4 rounded-2xl border border-[var(--border)] surface-card p-6">
           <Skeleton className="h-4 w-32" />

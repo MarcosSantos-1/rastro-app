@@ -4,10 +4,10 @@ import {
   isStatusEmAnalise,
   statusBadgeClass,
   statusLabel,
+  statusMarkClass,
   type DenunciaStatus,
 } from "@/lib/denuncias";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
 
 export function StatusBadge({
   status,
@@ -17,18 +17,26 @@ export function StatusBadge({
   className?: string;
 }) {
   const analyzing = isStatusEmAnalise(status);
+  const discarded = status === "descartada";
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        "inline-flex items-center gap-2 font-data text-[10px] uppercase tracking-[0.16em]",
         statusBadgeClass(status),
         className,
       )}
     >
-      {analyzing ? (
-        <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
-      ) : null}
+      <span
+        aria-hidden
+        className={cn(
+          "inline-block h-1.5 w-1.5 rotate-45",
+          discarded
+            ? "border border-current bg-transparent"
+            : statusMarkClass(status),
+          analyzing && "animate-pulse",
+        )}
+      />
       {statusLabel(status)}
     </span>
   );

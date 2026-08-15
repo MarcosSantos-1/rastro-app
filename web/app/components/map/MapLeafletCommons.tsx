@@ -1,5 +1,6 @@
 "use client";
 
+import { MdiIcon, mdiRecycle } from "@/app/components/ui/mdi-icon";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
@@ -99,20 +100,24 @@ export function BaseTiles({ layer }: { layer: MapBaseLayerId }) {
   return <TileLayer key="light" attribution={ATTR_CARTO} url={CARTO_LIGHT} maxZoom={20} />;
 }
 
-/** Menu de camadas (canto inferior direito) com ícone de satélite. */
+/** Menu de camadas (canto inferior direito) com satélite + ecopontos. */
 export function MapLayerMenu({
   layer,
   onChange,
+  showEcopontos,
+  onToggleEcopontos,
 }: {
   layer: MapBaseLayerId;
   onChange: (id: MapBaseLayerId) => void;
+  showEcopontos: boolean;
+  onToggleEcopontos: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="absolute bottom-3 right-3 z-[1000]">
+    <div className="absolute bottom-3 right-3 z-[1000] flex flex-col items-end gap-2">
       {open && (
-        <div className="mb-2 min-w-[180px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]/95 py-1 shadow-lg backdrop-blur-sm">
+        <div className="min-w-[180px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]/95 py-1 shadow-lg backdrop-blur-sm">
           {MAP_BASE_LAYERS.map((l) => (
             <button
               key={l.id}
@@ -134,33 +139,31 @@ export function MapLayerMenu({
       )}
       <button
         type="button"
+        onClick={onToggleEcopontos}
+        className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-md backdrop-blur-sm ${
+          showEcopontos
+            ? "border-[#2563eb]/40 bg-[#2563eb] text-white"
+            : "border-[var(--border)] bg-[var(--surface-elevated)]/95 text-[var(--foreground)] hover:bg-[var(--accent-soft)]"
+        }`}
+        title={showEcopontos ? "Ocultar ecopontos" : "Mostrar ecopontos"}
+        aria-label={showEcopontos ? "Ocultar ecopontos" : "Mostrar ecopontos"}
+        aria-pressed={showEcopontos}
+      >
+        <MdiIcon path={mdiRecycle} className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]/95 text-[var(--foreground)] shadow-md hover:bg-[var(--accent-soft)]"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)]/95 text-[var(--foreground)] shadow-md hover:bg-[var(--accent-soft)]"
         title="Camadas do mapa"
         aria-label="Camadas do mapa"
         aria-expanded={open}
       >
-        <SatelliteIcon className="h-5 w-5" />
+        <span className="text-lg leading-none" aria-hidden>
+          🛰️
+        </span>
       </button>
     </div>
   );
 }
 
-function SatelliteIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 9l-2 2m0 0l-6-6 2-2m4 8l2 2M5 15l2-2m0 0l6 6-2 2m-4-8l-2-2"
-      />
-      <circle cx="12" cy="12" r="2.5" strokeWidth={2} />
-      <path
-        strokeLinecap="round"
-        strokeWidth={2}
-        d="M4 12h2M18 12h2M12 4v2M12 18v2"
-      />
-    </svg>
-  );
-}

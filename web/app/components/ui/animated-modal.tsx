@@ -25,7 +25,10 @@ export function AnimatedModal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (e.defaultPrevented) return;
+        onClose();
+      }
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -43,7 +46,7 @@ export function AnimatedModal({
           <motion.button
             type="button"
             aria-label="Fechar"
-            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[rgba(4,16,10,0.55)] backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -57,7 +60,7 @@ export function AnimatedModal({
             exit={{ opacity: 0, scale: 0.96, y: 10 }}
             transition={{ type: "spring", stiffness: 380, damping: 28 }}
             className={cn(
-              "relative z-10 flex max-h-[min(90vh,840px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-2xl",
+              "relative z-10 flex max-h-[min(90vh,840px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-card-bg)] shadow-[var(--shadow-card)] backdrop-blur-md",
               className,
             )}
             onClick={(e) => e.stopPropagation()}
@@ -65,10 +68,10 @@ export function AnimatedModal({
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-6">
               <div className="min-w-0">
                 {subtitle ? (
-                  <div className="mb-1 text-xs text-[var(--muted)]">{subtitle}</div>
+                  <div className="mb-1 font-data text-xs uppercase tracking-wide text-[var(--muted)]">{subtitle}</div>
                 ) : null}
                 {title ? (
-                  <div className="font-display text-lg font-semibold tracking-tight text-[var(--foreground)] sm:text-xl">
+                  <div className="font-display text-lg font-black tracking-tight text-[var(--verde-esc)] sm:text-xl">
                     {title}
                   </div>
                 ) : null}
@@ -78,7 +81,7 @@ export function AnimatedModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg p-2 text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
+                  className="rounded-full p-2 text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
                   aria-label="Fechar"
                 >
                   <X className="h-4 w-4" />

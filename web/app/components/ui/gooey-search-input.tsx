@@ -24,7 +24,7 @@ export function GooeySearchInput({
             "linear-gradient(135deg, color-mix(in oklab, var(--accent) 35%, transparent), transparent 45%, color-mix(in oklab, var(--accent-muted) 25%, transparent))",
         }}
       />
-      <div className="relative flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 shadow-sm backdrop-blur-sm transition-shadow focus-within:border-rastro-500 focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_16%,transparent)]">
+      <div className="relative flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 shadow-[var(--shadow-sm)] backdrop-blur-sm transition-shadow focus-within:border-rastro-500 focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_16%,transparent)]">
         <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" />
         <input
           type="search"

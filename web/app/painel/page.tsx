@@ -18,44 +18,63 @@ import {
 } from "@/lib/denuncias";
 import { useDenuncias } from "@/lib/hooks/useDenuncias";
 import { cn } from "@/lib/utils";
+import { CATEGORIA_MDI, MdiIcon } from "../components/ui/mdi-icon";
 import {
   Ban,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
-  CircleDashed,
+  ChevronUp,
   ImageIcon,
   Inbox,
-  Leaf,
   Loader2,
-  Package,
-  Recycle,
   Route,
-  Shovel,
-  Trash2,
+  type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 type StatusFilter = "todos" | "em_analise" | "validada" | "roteada" | "descartada";
+type SortKey = "createdAt" | "fotos" | "categoria" | "municipio" | "endereco" | "status";
+type SortDir = "asc" | "desc";
+type GroupKey = "none" | "categoria" | "municipio" | "status";
 
 const PAGE_SIZE = 20;
 
-const CAT_ICONS: Record<DenunciaCategoria, ComponentType<{ className?: string }>> = {
-  descarte_irregular: Trash2,
-  conteiner_cheio: Package,
-  contaminacao_reciclavel: Recycle,
-  entulho_obra: Shovel,
-  residuo_verde: Leaf,
-  outros: CircleDashed,
-};
-
-const STATUS_ICONS: Record<StatusFilter, ComponentType<{ className?: string }>> = {
+const STATUS_ICONS: Record<StatusFilter, LucideIcon> = {
   todos: Inbox,
   em_analise: Loader2,
   validada: CheckCircle2,
   roteada: Route,
   descartada: Ban,
 };
+
+function cmpText(a: string, b: string) {
+  return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+}
+
+function sortValue(r: Denuncia, key: SortKey): string | number {
+  switch (key) {
+    case "createdAt":
+      return new Date(r.createdAt).getTime() || 0;
+    case "fotos":
+      return denunciaFotoUrls(r).length;
+    case "categoria":
+      return categoriaLabel(r.categoria);
+    case "municipio":
+      return (r.municipio ?? "").trim();
+    case "endereco":
+      return (r.endereco ?? "").trim();
+    case "status":
+      return STATUS_LABEL[normalizeDenunciaStatus(r.status)];
+  }
+}
+
+function groupLabel(r: Denuncia, g: Exclude<GroupKey, "none">): string {
+  if (g === "categoria") return categoriaLabel(r.categoria);
+  if (g === "municipio") return r.municipio?.trim() || "Sem município";
+  return STATUS_LABEL[normalizeDenunciaStatus(r.status)];
+}
 
 export default function PainelPage() {
   const { ready, profile } = useAuthWeb();
@@ -66,6 +85,9 @@ export default function PainelPage() {
   const [statusTab, setStatusTab] = useState<StatusFilter>("todos");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Denuncia | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [groupBy, setGroupBy] = useState<GroupKey>("none");
 
   useEffect(() => {
     if (ready && !profile?.nome) router.replace("/");
@@ -73,7 +95,7 @@ export default function PainelPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoria, statusTab]);
+  }, [search, categoria, statusTab, sortKey, sortDir, groupBy]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -94,7 +116,25 @@ export default function PainelPage() {
     });
   }, [items, search, categoria, statusTab]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const sorted = useMemo(() => {
+    const rows = [...filtered];
+    const dir = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (groupBy !== "none") {
+        const g = cmpText(groupLabel(a, groupBy), groupLabel(b, groupBy));
+        if (g !== 0) return g;
+      }
+      const va = sortValue(a, sortKey);
+      const vb = sortValue(b, sortKey);
+      if (typeof va === "number" && typeof vb === "number") {
+        return (va - vb) * dir;
+      }
+      return cmpText(String(va), String(vb)) * dir;
+    });
+    return rows;
+  }, [filtered, sortKey, sortDir, groupBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   useEffect(() => {
@@ -103,8 +143,8 @@ export default function PainelPage() {
 
   const pageRows = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, safePage]);
+    return sorted.slice(start, start + PAGE_SIZE);
+  }, [sorted, safePage]);
 
   // Mantém o modal sincronizado com o snapshot em tempo real
   useEffect(() => {
@@ -132,6 +172,22 @@ export default function PainelPage() {
     return <PageAuthSkeleton />;
   }
 
+  const toggleSort = (key: SortKey) => {
+    const firstDir: SortDir =
+      key === "createdAt" || key === "fotos" ? "desc" : "asc";
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir(firstDir);
+      return;
+    }
+    if (sortDir === firstDir) {
+      setSortDir(firstDir === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortKey("createdAt");
+    setSortDir("desc");
+  };
+
   return (
     <AppShell>
       <OcorrenciaModal
@@ -141,7 +197,7 @@ export default function PainelPage() {
       />
 
       <header className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight lg:text-3xl">
+        <h1 className="font-display text-2xl font-black text-[var(--verde-esc)] lg:text-3xl">
           Ocorrências
         </h1>
         <p className="mt-1 text-[var(--muted)]">
@@ -158,7 +214,7 @@ export default function PainelPage() {
         />
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          <span className="font-eyebrow text-[var(--muted)]">
             Categoria
           </span>
           {(
@@ -173,21 +229,26 @@ export default function PainelPage() {
             ] as const
           ).map(([key, label]) => {
             const active = categoria === key;
-            const Icon =
-              key === "ALL" ? Inbox : CAT_ICONS[key as DenunciaCategoria];
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => setCategoria(key)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                   active
-                    ? "border-rastro-600 bg-rastro-600 text-white dark:border-rastro-500 dark:bg-rastro-500 dark:text-zinc-950"
+                    ? "border-rastro-600 bg-rastro-600 text-white shadow-[var(--shadow-cta)]"
                     : "border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]",
                 )}
               >
-                <Icon className="h-3.5 w-3.5 opacity-90" />
+                {key === "ALL" ? (
+                  <Inbox className="h-3.5 w-3.5 opacity-90" />
+                ) : (
+                  <MdiIcon
+                    path={CATEGORIA_MDI[key as DenunciaCategoria]}
+                    className="h-3.5 w-3.5 opacity-90"
+                  />
+                )}
                 {label}
               </button>
             );
@@ -214,20 +275,47 @@ export default function PainelPage() {
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-t-xl px-3 py-2.5 text-sm font-semibold transition-colors",
                   active
-                    ? "border-b-2 border-rastro-600 text-rastro-700 dark:border-rastro-400 dark:text-rastro-300"
+                    ? "border-b-2 border-rastro-600 text-rastro-600 dark:border-rastro-400 dark:text-rastro-400"
                     : "border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--foreground)]",
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    key === "em_analise" && active && "animate-spin",
-                  )}
-                />
+                {key === "em_analise" ? (
+                  <Icon
+                    className={cn("h-3.5 w-3.5", active && "animate-spin")}
+                  />
+                ) : (
+                  <Icon className="h-3.5 w-3.5" />
+                )}
                 {label}
               </button>
             );
           })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-eyebrow text-[var(--muted)]">Agrupar</span>
+          {(
+            [
+              ["none", "Nenhum"],
+              ["categoria", "Categoria"],
+              ["municipio", "Município"],
+              ["status", "Status"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setGroupBy(key)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                groupBy === key
+                  ? "border-rastro-600 bg-rastro-600 text-white"
+                  : "border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]",
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -246,12 +334,48 @@ export default function PainelPage() {
               <thead className="border-b border-[var(--border)] bg-[var(--accent-soft)]/35">
                 <tr>
                   <th className="px-4 py-3 font-semibold">ID</th>
-                  <th className="px-4 py-3 font-semibold">Categoria</th>
-                  <th className="px-4 py-3 font-semibold">Município</th>
-                  <th className="px-4 py-3 font-semibold">Endereço</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Fotos</th>
-                  <th className="px-4 py-3 font-semibold">Criada em</th>
+                  <SortTh
+                    label="Categoria"
+                    k="categoria"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortTh
+                    label="Município"
+                    k="municipio"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortTh
+                    label="Endereço"
+                    k="endereco"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortTh
+                    label="Status"
+                    k="status"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortTh
+                    label="Fotos"
+                    k="fotos"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortTh
+                    label="Criada em"
+                    k="createdAt"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
                   <th className="px-3 py-3 font-semibold">
                     <span className="sr-only">Abrir</span>
                   </th>
@@ -268,12 +392,25 @@ export default function PainelPage() {
                     </td>
                   </tr>
                 ) : (
-                  pageRows.map((r) => {
-                    const CatIcon = CAT_ICONS[r.categoria];
+                  pageRows.map((r, i) => {
                     const fotos = denunciaFotoUrls(r).length;
+                    const prev = i > 0 ? pageRows[i - 1] : null;
+                    const showGroup =
+                      groupBy !== "none" &&
+                      (!prev || groupLabel(prev, groupBy) !== groupLabel(r, groupBy));
                     return (
+                      <Fragment key={r.id}>
+                        {showGroup ? (
+                          <tr className="bg-[var(--accent-soft)]/40">
+                            <td
+                              colSpan={8}
+                              className="px-4 py-2 font-eyebrow text-[var(--accent)]"
+                            >
+                              {groupLabel(r, groupBy)}
+                            </td>
+                          </tr>
+                        ) : null}
                       <tr
-                        key={r.id}
                         role="button"
                         tabIndex={0}
                         onClick={() => setSelected(r)}
@@ -285,13 +422,16 @@ export default function PainelPage() {
                         }}
                         className="group cursor-pointer transition-colors hover:bg-[var(--accent-soft)]/55"
                       >
-                        <td className="px-4 py-3 font-mono text-xs text-[var(--muted)]">
+                        <td className="px-4 py-3 font-data text-xs uppercase text-[var(--muted)]">
                           {r.id.slice(0, 8)}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-2">
-                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-rastro-700 dark:text-rastro-300">
-                              <CatIcon className="h-3.5 w-3.5" />
+                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-rastro-600">
+                              <MdiIcon
+                                path={CATEGORIA_MDI[r.categoria]}
+                                className="h-4 w-4"
+                              />
                             </span>
                             <span className="font-medium">{categoriaLabel(r.categoria)}</span>
                           </span>
@@ -301,21 +441,22 @@ export default function PainelPage() {
                           {r.endereco || "—"}
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge status={r.status} />
+                          <StatusBadge status={r.status} className="font-bold" />
                         </td>
                         <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 text-xs text-[var(--muted)]">
+                          <span className="inline-flex items-center gap-1 font-data text-xs text-[var(--muted)]">
                             <ImageIcon className="h-3.5 w-3.5" />
                             {fotos}
                           </span>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--muted)]">
+                        <td className="whitespace-nowrap px-4 py-3 font-data text-xs text-[var(--muted)]">
                           {formatDateTimeBr(r.createdAt)}
                         </td>
                         <td className="px-3 py-3">
                           <ChevronRight className="h-4 w-4 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-rastro-600" />
                         </td>
                       </tr>
+                      </Fragment>
                     );
                   })
                 )}
@@ -333,7 +474,7 @@ export default function PainelPage() {
                   type="button"
                   disabled={safePage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm font-semibold hover:bg-[var(--accent-soft)] disabled:opacity-40"
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm font-semibold hover:bg-[var(--accent-soft)] disabled:opacity-40"
                 >
                   Anterior
                 </button>
@@ -341,7 +482,7 @@ export default function PainelPage() {
                   type="button"
                   disabled={safePage >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm font-semibold hover:bg-[var(--accent-soft)] disabled:opacity-40"
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm font-semibold hover:bg-[var(--accent-soft)] disabled:opacity-40"
                 >
                   Próxima
                 </button>
@@ -351,5 +492,56 @@ export default function PainelPage() {
         </>
       )}
     </AppShell>
+  );
+}
+
+function SortTh({
+  label,
+  k,
+  sortKey,
+  sortDir,
+  onSort,
+}: {
+  label: string;
+  k: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sortKey === k;
+  return (
+    <th
+      className="px-4 py-3 font-semibold"
+      aria-sort={
+        active ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        title={`Ordenar por ${label.toLowerCase()}`}
+        className="inline-flex items-center gap-1 hover:text-[var(--accent)]"
+      >
+        {label}
+        <span className="inline-flex flex-col leading-none" aria-hidden>
+          <ChevronUp
+            className={cn(
+              "h-3 w-3",
+              active && sortDir === "asc"
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)]/35",
+            )}
+          />
+          <ChevronDown
+            className={cn(
+              "-mt-0.5 h-3 w-3",
+              active && sortDir === "desc"
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)]/35",
+            )}
+          />
+        </span>
+      </button>
+    </th>
   );
 }

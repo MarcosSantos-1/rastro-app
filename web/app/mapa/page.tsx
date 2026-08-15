@@ -28,14 +28,14 @@ export default function MapaPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
       <header className="shrink-0">
-        <h1 className="font-display text-lg font-bold tracking-tight sm:text-xl">
+        <h1 className="font-display text-lg font-black text-[var(--verde-esc)] sm:text-xl">
           Mapa de ocorrências
         </h1>
         <p className="text-xs text-[var(--muted)] sm:text-sm">
           Densidade geográfica das denúncias (Firestore).
         </p>
       </header>
-      <div className="relative min-h-[560px] flex-1 overflow-hidden rounded-2xl border border-[var(--border)]">
+      <div className="relative min-h-[560px] flex-1 overflow-hidden rounded-2xl border border-[var(--border)] shadow-[var(--shadow-card)]">
         <MapaClient isDark={isDark} />
       </div>
     </div>

@@ -3,11 +3,11 @@
 import { useAuthWeb } from "@/lib/contexts/AuthWebContext";
 import { AppShell } from "./components/AppShell";
 import { DashboardHome } from "./components/DashboardHome";
+import { BrandMark } from "./components/BrandMark";
 import { InteractiveHoverButton } from "./components/ui/interactive-hover-button";
 import { LoginSkeleton } from "./components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
 
 export default function HomePage() {
   const { ready, profile, signInWithNome } = useAuthWeb();
@@ -39,7 +39,7 @@ export default function HomePage() {
           <DashboardHome />
         </AppShell>
         <p
-          className="pointer-events-none fixed bottom-3 right-3 z-50 text-[11px] tabular-nums text-[var(--muted)] select-none"
+          className="pointer-events-none fixed bottom-3 right-3 z-50 font-data text-[11px] text-[var(--muted)] select-none"
           aria-hidden
         >
           1.0.0
@@ -52,21 +52,11 @@ export default function HomePage() {
     <>
       <AppShell>
         <div className="mx-auto max-w-md space-y-6">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/rastro-logo.png"
-              alt="Rastro"
-              width={48}
-              height={48}
-              className="h-12 w-12 rounded-xl object-contain"
-              priority
-            />
-            <div>
-              <h1 className="font-display text-3xl font-bold text-gradient-accent">Rastro</h1>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                Painel de denúncias ambientais
-              </p>
-            </div>
+          <div className="space-y-3">
+            <BrandMark priority />
+            <p className="text-sm text-[var(--muted)]">
+              Painel de denúncias ambientais
+            </p>
           </div>
           <form
             onSubmit={submit}
@@ -94,7 +84,7 @@ export default function HomePage() {
         </div>
       </AppShell>
       <p
-        className="pointer-events-none fixed bottom-3 right-3 z-50 text-[11px] tabular-nums text-[var(--muted)] select-none"
+        className="pointer-events-none fixed bottom-3 right-3 z-50 font-data text-[11px] text-[var(--muted)] select-none"
         aria-hidden
       >
         1.0.0
