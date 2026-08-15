@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import { colors } from "@/constants/colors";
 import { useRastroTheme } from "@/contexts/ThemeContext";
@@ -82,10 +82,15 @@ function kindColor(kind: RastroMapMarkerKind): string {
 function PinMarker({ kind, photoUrl }: { kind: RastroMapMarkerKind; photoUrl?: string }) {
   const bg = kindColor(kind);
   const icon = kind === "ecoponto" ? "recycle" : "trash-can";
+  const drop = useRef(new Animated.Value(0)).current;
 
-  if (photoUrl && kind !== "ecoponto") {
-    return (
-      <View style={styles.pinWrap} collapsable={false}>
+  useEffect(() => {
+    Animated.spring(drop, { toValue: 1, friction: 6, tension: 90, useNativeDriver: true }).start();
+  }, [drop]);
+
+  const pinBody =
+    photoUrl && kind !== "ecoponto" ? (
+      <>
         <View style={[styles.photoPin, { borderColor: bg }]} collapsable={false}>
           <Image source={{ uri: photoUrl }} style={styles.photoImg} contentFit="cover" />
           <View style={[styles.photoBadge, { backgroundColor: bg }]}>
@@ -93,17 +98,35 @@ function PinMarker({ kind, photoUrl }: { kind: RastroMapMarkerKind; photoUrl?: s
           </View>
         </View>
         <View style={[styles.pinTip, { borderTopColor: bg }]} collapsable={false} />
-      </View>
+      </>
+    ) : (
+      <>
+        <View style={[styles.pinHead, { backgroundColor: bg }]} collapsable={false}>
+          <MaterialCommunityIcons name={icon} size={18} color="#fff" />
+        </View>
+        <View style={[styles.pinTip, { borderTopColor: bg }]} collapsable={false} />
+      </>
     );
-  }
 
   return (
-    <View style={styles.pinWrap} collapsable={false}>
-      <View style={[styles.pinHead, { backgroundColor: bg }]} collapsable={false}>
-        <MaterialCommunityIcons name={icon} size={18} color="#fff" />
-      </View>
-      <View style={[styles.pinTip, { borderTopColor: bg }]} collapsable={false} />
-    </View>
+    <Animated.View
+      style={[
+        styles.pinWrap,
+        {
+          transform: [
+            {
+              translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [-26, 0] }),
+            },
+            {
+              scale: drop.interpolate({ inputRange: [0, 0.72, 1], outputRange: [0.55, 1.08, 1] }),
+            },
+          ],
+        },
+      ]}
+      collapsable={false}
+    >
+      {pinBody}
+    </Animated.View>
   );
 }
 

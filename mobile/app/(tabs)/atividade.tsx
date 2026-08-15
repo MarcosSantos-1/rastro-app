@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -14,7 +13,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MeshSkeleton } from "@/components/MeshSkeleton";
+import { NewOccurrenceFab } from "@/components/NewOccurrenceFab";
+import { PhotoStamp } from "@/components/PhotoStamp";
 import { StatusBucketIcon } from "@/components/StatusBucketIcon";
+import { StatusRoute } from "@/components/StatusRoute";
 import { type ThemeColors } from "@/constants/colors";
 import { makeShadows } from "@/constants/shadows";
 import { fonts, makeTypography } from "@/constants/typography";
@@ -28,6 +31,8 @@ import {
   type DenunciaCategoria,
   type HomeStatusBucket,
 } from "@/lib/denuncias";
+import { formatPhotoStamp } from "@/lib/format-stamp";
+import { hapticResolved } from "@/lib/haptics";
 import { listMinhasDenuncias } from "@/lib/submit-denuncia";
 
 function formatRelativeDate(iso?: string): string {
@@ -104,6 +109,13 @@ function FeedCard({
       ) : photos.length === 1 ? (
         <Pressable onPress={() => onOpenPhoto(photos, 0)} accessibilityLabel="Ver foto">
           <Image source={{ uri: photos[0] }} style={[styles.photo, { width: photoWidth }]} contentFit="cover" />
+          <PhotoStamp
+            text={formatPhotoStamp(
+              item.createdAt ? new Date(item.createdAt) : new Date(),
+              item.lat,
+              item.lng,
+            )}
+          />
         </Pressable>
       ) : (
         <View>
@@ -123,6 +135,13 @@ function FeedCard({
                 accessibilityLabel={`Ver foto ${index + 1}`}
               >
                 <Image source={{ uri }} style={[styles.photo, { width: photoWidth }]} contentFit="cover" />
+                <PhotoStamp
+                  text={formatPhotoStamp(
+                    item.createdAt ? new Date(item.createdAt) : new Date(),
+                    item.lat,
+                    item.lng,
+                  )}
+                />
               </Pressable>
             ))}
           </ScrollView>
@@ -146,6 +165,8 @@ function FeedCard({
           </View>
           <Text style={styles.time}>{formatRelativeDate(item.createdAt)}</Text>
         </View>
+
+        <StatusRoute bucket={bucket} discarded={discarded} />
 
         <Text style={styles.caption}>{categoria}</Text>
 
@@ -214,6 +235,7 @@ export default function AtividadeScreen() {
   const [items, setItems] = useState<Denuncia[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewer, setViewer] = useState<ViewerState | null>(null);
+  const seenResolved = useRef<Set<string>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -245,14 +267,25 @@ export default function AtividadeScreen() {
     setViewer({ uris, index });
   }, []);
 
+  useEffect(() => {
+    let fresh = false;
+    for (const d of items) {
+      if (homeStatusBucket(d.status) !== "resolvido") continue;
+      if (seenResolved.current.size > 0 && !seenResolved.current.has(d.id)) fresh = true;
+      seenResolved.current.add(d.id);
+    }
+    if (fresh) hapticResolved();
+  }, [items]);
+
+  const showFab = !loading && items.length > 0;
   const listPad = useMemo(
     () => ({
       paddingHorizontal: 16,
       paddingTop: 16,
-      paddingBottom: Math.max(insets.bottom, 16) + 24,
+      paddingBottom: Math.max(insets.bottom, 16) + (showFab ? 88 : 24),
       flexGrow: 1 as const,
     }),
-    [insets.bottom],
+    [insets.bottom, showFab],
   );
 
   return (
@@ -263,9 +296,7 @@ export default function AtividadeScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.cta} />
-        </View>
+        <MeshSkeleton />
       ) : (
         <FlatList
           data={items}
@@ -293,6 +324,8 @@ export default function AtividadeScreen() {
           }
         />
       )}
+
+      {showFab ? <NewOccurrenceFab /> : null}
 
       <PhotoViewer viewer={viewer} onClose={() => setViewer(null)} />
     </View>

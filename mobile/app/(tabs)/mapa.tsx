@@ -320,21 +320,22 @@ export default function MapaScreen() {
           </View>
         ) : null}
 
-        <Pressable
-          style={styles.focusBtn}
-          onPress={() => mapRef.current?.focusUser()}
-          accessibilityLabel="Centralizar no usuário"
-        >
-          <Ionicons name="locate" size={22} color={colors.cta} />
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.mapFab, pressed && styles.mapFabPressed]}
-          onPress={() => router.push("/registro")}
-          accessibilityLabel="Adicionar ocorrência"
-        >
-          <Ionicons name="add" size={30} color={colors.ctaText} />
-        </Pressable>
+        <View style={styles.mapActions}>
+          <Pressable
+            style={({ pressed }) => [styles.focusBtn, pressed && { opacity: 0.88 }]}
+            onPress={() => mapRef.current?.focusUser()}
+            accessibilityLabel="Centralizar no usuário"
+          >
+            <Ionicons name="locate" size={22} color={isDark ? colors.homeFocus : colors.cta} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.mapFab, pressed && styles.mapFabPressed]}
+            onPress={() => router.push("/registro")}
+            accessibilityLabel="Adicionar ocorrência"
+          >
+            <Ionicons name="add" size={30} color={colors.ctaText} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -570,31 +571,33 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     color: colors.cta,
     fontWeight: "600",
   },
-  focusBtn: {
+  mapActions: {
     position: "absolute",
-    right: 20,
-    top: "45%",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.bgElevated,
+    right: 16,
+    bottom: 16,
+    alignItems: "center",
+    gap: 10,
+    zIndex: 20,
+  },
+  focusBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: isDark ? "#0B1A12" : colors.bgElevated,
+    borderWidth: 1.5,
+    borderColor: isDark ? colors.homeFocus : colors.border,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.cardSoft,
-    zIndex: 20,
   },
   mapFab: {
-    position: "absolute",
-    right: 20,
-    bottom: 16,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: colors.cta,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.fab,
-    zIndex: 20,
   },
   mapFabPressed: {
     backgroundColor: colors.ctaPressed,

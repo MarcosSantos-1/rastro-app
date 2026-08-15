@@ -17,6 +17,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MeshSkeleton } from "@/components/MeshSkeleton";
+import { PhotoStamp } from "@/components/PhotoStamp";
 import { type ThemeColors } from "@/constants/colors";
 import { makeShadows } from "@/constants/shadows";
 import { fonts, makeTypography } from "@/constants/typography";
@@ -26,7 +28,9 @@ import {
   CATEGORIA_LABEL,
   type DenunciaCategoria,
 } from "@/lib/denuncias";
+import { formatPhotoStamp } from "@/lib/format-stamp";
 import { reverseGeocodeGoogle } from "@/lib/google-geocode";
+import { hapticSent, hapticShutter } from "@/lib/haptics";
 import {
   findNearbyActiveDenuncia,
   SKIP_ANTI_DUPE_CHECK,
@@ -121,9 +125,14 @@ export default function RegistroScreen() {
           });
         }
 
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
+        const pos = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("GPS timeout")), 8_000),
+          ),
+        ]);
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setCoords({ lat, lng });
@@ -153,6 +162,7 @@ export default function RegistroScreen() {
       allowsMultipleSelection: false,
     });
     if (!res.canceled && res.assets[0]?.uri) {
+      hapticShutter();
       setPhotos((p) => [...p, res.assets[0].uri].slice(0, 2));
     }
   }, [photos.length]);
@@ -172,6 +182,7 @@ export default function RegistroScreen() {
       allowsEditing: false,
     });
     if (!res.canceled && res.assets[0]?.uri) {
+      hapticShutter();
       setPhotos((p) => [...p, res.assets[0].uri].slice(0, 2));
     }
   }, [photos.length]);
@@ -218,7 +229,7 @@ export default function RegistroScreen() {
         }
       }
 
-      await submitDenuncia({
+      const { id } = await submitDenuncia({
         categoria,
         observacao: observacaoFinal,
         lat: coords.lat,
@@ -229,9 +240,10 @@ export default function RegistroScreen() {
         photoUris: photos,
       });
 
+      await hapticSent();
       router.replace({
         pathname: "/enviado",
-        params: { municipio: municipio || "local" },
+        params: { id, municipio: municipio || "local" },
       });
     } catch (e) {
       Alert.alert("Erro ao enviar", e instanceof Error ? e.message : "Tente novamente.");
@@ -258,6 +270,7 @@ export default function RegistroScreen() {
     (categoria !== "outros" || !!outrosTexto.trim());
 
   const keyboardOpen = keyboardHeight > 0;
+  const locReady = addressLine !== "Obtendo localização…";
 
   return (
     <View
@@ -289,12 +302,20 @@ export default function RegistroScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
+        {!locReady ? (
+          <MeshSkeleton variant="registro" />
+        ) : (
+          <>
         {hasPhoto ? (
           <View style={styles.photoFilled}>
             <View style={styles.photosRow}>
               {photos.map((uri) => (
                 <View key={uri} style={styles.thumbWrap}>
                   <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+                  <PhotoStamp
+                    animate
+                    text={formatPhotoStamp(new Date(), coords?.lat, coords?.lng)}
+                  />
                   <Pressable style={styles.thumbRemove} onPress={() => removePhoto(uri)}>
                     <Ionicons name="close-circle" size={24} color="#fff" />
                   </Pressable>
@@ -411,8 +432,11 @@ export default function RegistroScreen() {
             />
           </>
         )}
+          </>
+        )}
       </ScrollView>
 
+      {locReady ? (
       <View
         style={[
           styles.footer,
@@ -438,6 +462,7 @@ export default function RegistroScreen() {
           <Text style={styles.footerHint}>Adicione uma foto para enviar o registro</Text>
         ) : null}
       </View>
+      ) : null}
     </View>
   );
 }

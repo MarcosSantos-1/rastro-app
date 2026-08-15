@@ -6,7 +6,7 @@ import {
 import { MartianMono_500Medium } from "@expo-google-fonts/martian-mono";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack, usePathname, useRouter } from "expo-router";
+import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, type ReactNode } from "react";
@@ -25,16 +25,22 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
- * Gate enxuto: lê AsyncStorage, manda pra /onboarding se preciso, e libera a UI.
- * Não depende de navState.key (travava no APK) nem de Auth Firebase.
+ * Stack sempre montado. Overlay cobre até a rota certa existir.
+ * O replace só roda depois que o navigator tem key — senão o loading fica eterno.
  */
 function OnboardingGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const [booting, setBooting] = useState(true);
-  const [done, setDone] = useState(false);
+  const segments = useSegments();
+  const navState = useRootNavigationState();
+  const [gate, setGate] = useState<"loading" | "onboarding" | "app">("loading");
 
-  useEffect(() => subscribeOnboarding(setDone), []);
+  useEffect(
+    () =>
+      subscribeOnboarding((completed) => {
+        setGate(completed ? "app" : "onboarding");
+      }),
+    [],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -46,37 +52,29 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
         completed = false;
       }
       if (!alive) return;
-      setDone(completed);
-      setBooting(false);
-      void SplashScreen.hideAsync().catch(() => {});
-
-      if (!completed) {
-        try {
-          router.replace("/onboarding");
-        } catch {
-          /* index Redirect cobre */
-        }
-      }
+      setGate(completed ? "app" : "onboarding");
     })();
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, []);
 
-  // Se ainda não completou e ainda não estamos no onboarding, mantém overlay
-  // só até a rota chegar (máx ~1s) — nunca infinito.
-  const [routeWaitDone, setRouteWaitDone] = useState(false);
+  const navReady = Boolean(navState?.key);
+  const onOnboarding = segments[0] === "onboarding";
+
   useEffect(() => {
-    if (booting || done || pathname === "/onboarding") {
-      setRouteWaitDone(true);
-      return;
+    if (!navReady || gate === "loading") return;
+    if (gate === "onboarding" && !onOnboarding) {
+      router.replace("/onboarding");
     }
-    setRouteWaitDone(false);
-    const t = setTimeout(() => setRouteWaitDone(true), 1000);
-    return () => clearTimeout(t);
-  }, [booting, done, pathname]);
+  }, [navReady, gate, onOnboarding, router]);
 
-  const showOverlay = booting || (!done && pathname !== "/onboarding" && !routeWaitDone);
+  const showOverlay = gate === "loading" || (gate === "onboarding" && !onOnboarding);
+
+  useEffect(() => {
+    if (!showOverlay) return;
+    void SplashScreen.hideAsync().catch(() => {});
+  }, [showOverlay]);
 
   return (
     <>

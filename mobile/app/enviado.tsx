@@ -1,14 +1,18 @@
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TypewriterMono } from "@/components/TypewriterMono";
 import { type ThemeColors } from "@/constants/colors";
 import { fonts, makeTypography } from "@/constants/typography";
 import { useThemedStyles } from "@/contexts/ThemeContext";
+import { formatProtocol } from "@/lib/format-stamp";
 
 export default function EnviadoScreen() {
   const insets = useSafeAreaInsets();
   const styles = useThemedStyles(createStyles);
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const protocol = id ? formatProtocol(id) : null;
 
   return (
     <View
@@ -28,6 +32,7 @@ export default function EnviadoScreen() {
         />
 
         <Text style={styles.title}>Ocorrência enviada!</Text>
+        {protocol ? <TypewriterMono text={protocol} style={styles.protocol} /> : null}
         <Text style={styles.body}>
           Recebemos seu registro. Nossa IA vai analisar as fotos e, se tudo estiver certo,
           o ponto aparece no mapa. Obrigado por cuidar da sua cidade!
@@ -75,6 +80,13 @@ function createStyles(colors: ThemeColors) {
     ...typography.display,
     marginTop: 8,
     fontSize: 24,
+    textAlign: "center",
+  },
+  protocol: {
+    ...typography.data,
+    marginTop: 12,
+    fontSize: 16,
+    color: colors.homeFocus,
     textAlign: "center",
   },
   body: {

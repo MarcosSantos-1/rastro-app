@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HomeMiniMap, type HomeMiniMapDot } from "@/components/HomeMiniMap";
+import { MeshSkeleton } from "@/components/MeshSkeleton";
+import { NewOccurrenceFab } from "@/components/NewOccurrenceFab";
 import { ScreenBackground } from "@/components/ScreenBackground";
 import { StatusBucketIcon } from "@/components/StatusBucketIcon";
 import { type ThemeColors } from "@/constants/colors";
@@ -70,6 +72,7 @@ export default function InicioScreen() {
   const [nearbyEco, setNearbyEco] = useState(0);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [miniDots, setMiniDots] = useState<HomeMiniMapDot[]>([]);
+  const [ready, setReady] = useState(false);
   const fabBottom = 16;
 
   const scrollToTop = useCallback(() => {
@@ -164,6 +167,8 @@ export default function InicioScreen() {
             setNearbyEco(0);
             setMiniDots([]);
           }
+        } finally {
+          if (alive) setReady(true);
         }
       })();
       return () => {
@@ -209,10 +214,13 @@ export default function InicioScreen() {
         contentContainerStyle={{
           paddingTop: 8,
           paddingBottom: fabBottom + 80,
-          paddingHorizontal: 20,
+          paddingHorizontal: ready ? 20 : 0,
         }}
         showsVerticalScrollIndicator={false}
       >
+        {!ready ? <MeshSkeleton variant="home" /> : null}
+        {ready ? (
+        <>
         <Pressable
           style={styles.hero}
           onPress={() => router.push("/registro")}
@@ -317,19 +325,11 @@ export default function InicioScreen() {
             contentFit="cover"
           />
         </View>
+        </>
+        ) : null}
       </ScrollView>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          { bottom: fabBottom },
-          pressed && styles.fabPressed,
-        ]}
-        onPress={() => router.push("/registro")}
-        accessibilityLabel="Adicionar ocorrência"
-      >
-        <Ionicons name="add" size={30} color={colors.ctaText} />
-      </Pressable>
+      <NewOccurrenceFab bottom={fabBottom} />
 
       <Modal
         visible={notifOpen}
@@ -641,21 +641,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     marginTop: 4,
     fontSize: 11,
     color: colors.textMuted,
-  },
-  fab: {
-    position: "absolute",
-    right: 20,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.cta,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.fab,
-    zIndex: 30,
-  },
-  fabPressed: {
-    backgroundColor: colors.ctaPressed,
   },
   });
 }

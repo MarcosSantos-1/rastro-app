@@ -29,7 +29,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       bundleIdentifier: "com.marcosv.rastro",
       supportsTablet: true,
-      icon: "./assets/images/icon.png",
+      icon: {
+        light: "./assets/images/icon.png",
+        dark: "./assets/images/icon.png",
+        tinted: "./assets/images/icon.png",
+      },
       infoPlist: {
         NSCameraUsageDescription:
           "O Rastro usa a câmera para fotografar descartes irregulares e problemas de zeladoria.",
@@ -46,7 +50,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       icon: "./assets/images/icon.png",
       adaptiveIcon: {
-        backgroundColor: "#F3F6F4",
+        backgroundColor: "#28935D",
         foregroundImage: "./assets/images/android-icon-foreground.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
@@ -75,13 +79,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-splash-screen",
         {
-          // Só fundo + letter (sem ícone adaptativo cheio). No Android 12+
-          // o SO ainda mostra o adaptive icon em círculo por um instante;
-          // em seguida o BrandedLoading cobre com o logo inteiro, sem corte.
-          image: "./assets/images/rastro_letter_splash.png",
-          imageWidth: 180,
+          image: "./assets/images/rastro_logo_mark.png",
+          imageWidth: 200,
           resizeMode: "contain",
           backgroundColor: "#F3F6F4",
+          dark: {
+            image: "./assets/images/rastro_logo_mark.png",
+            backgroundColor: "#07130D",
+          },
         },
       ],
       [

@@ -5,9 +5,7 @@ import { useRastroTheme } from "@/contexts/ThemeContext";
 import { isOnboardingCompleted } from "@/lib/onboarding";
 
 /**
- * Gate mínimo: fundo sólido enquanto lê o storage.
- * O overlay do root (_layout) cobre qualquer flash — aqui não montamos as tabs
- * até saber se o onboarding já foi feito.
+ * Só redireciona depois de ler o storage. O overlay do root cobre este vazio.
  */
 export default function IndexGate() {
   const { colors } = useRastroTheme();
@@ -17,7 +15,12 @@ export default function IndexGate() {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const completed = await isOnboardingCompleted();
+      let completed = false;
+      try {
+        completed = await isOnboardingCompleted();
+      } catch {
+        completed = false;
+      }
       if (!alive) return;
       setDone(completed);
       setReady(true);

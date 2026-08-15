@@ -82,7 +82,7 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
       pointerEvents={visible ? "auto" : "none"}
     >
       <Animated.Image
-        source={require("@/assets/images/rastro_logo.png")}
+        source={require("@/assets/images/rastro_logo_mark.png")}
         style={[styles.logo, { transform: [{ scale }] }]}
         resizeMode="contain"
       />
