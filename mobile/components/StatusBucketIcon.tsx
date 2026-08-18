@@ -1,11 +1,6 @@
-import { Image } from "expo-image";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { HomeStatusBucket } from "@/lib/denuncias";
-
-const ICONS = {
-  encaminhado: require("@/assets/images/icons/send.png"),
-  em_execucao: require("@/assets/images/icons/garbage-truck.png"),
-  resolvido: require("@/assets/images/onboarding/success.png"),
-} as const;
+import { useRastroTheme } from "@/contexts/ThemeContext";
 
 type StatusBucketIconProps = {
   bucket: HomeStatusBucket;
@@ -13,12 +8,12 @@ type StatusBucketIconProps = {
 };
 
 export function StatusBucketIcon({ bucket, size = 32 }: StatusBucketIconProps) {
-  return (
-    <Image
-      source={ICONS[bucket]}
-      style={{ width: size, height: size }}
-      contentFit="contain"
-      accessibilityIgnoresInvertColors
-    />
-  );
+  const { colors } = useRastroTheme();
+
+  if (bucket === "em_execucao") {
+    return <MaterialCommunityIcons name="dump-truck" size={size} color={colors.cta} />;
+  }
+
+  const name = bucket === "encaminhado" ? "send" : "checkmark-circle";
+  return <Ionicons name={name} size={size} color={colors.cta} />;
 }

@@ -107,7 +107,7 @@ function FeedCard({
           <Text style={styles.photoPlaceholderText}>Foto em processamento</Text>
         </View>
       ) : photos.length === 1 ? (
-        <Pressable onPress={() => onOpenPhoto(photos, 0)} accessibilityLabel="Ver foto">
+        <Pressable style={styles.photoWrap} onPress={() => onOpenPhoto(photos, 0)} accessibilityLabel="Ver foto">
           <Image source={{ uri: photos[0] }} style={[styles.photo, { width: photoWidth }]} contentFit="cover" />
           <PhotoStamp
             text={formatPhotoStamp(
@@ -118,7 +118,7 @@ function FeedCard({
           />
         </Pressable>
       ) : (
-        <View>
+        <View style={styles.photoWrap}>
           <ScrollView
             horizontal
             pagingEnabled
@@ -401,6 +401,11 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     borderColor: colors.border,
     ...shadows.card,
   },
+  photoWrap: {
+    overflow: "hidden",
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+  },
   photo: {
     aspectRatio: 4 / 3,
     backgroundColor: colors.ctaSoft,
@@ -412,6 +417,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
   },
   photoPlaceholderText: {
     fontFamily: fonts.bodySemi,

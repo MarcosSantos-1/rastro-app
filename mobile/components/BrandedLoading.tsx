@@ -9,10 +9,11 @@ type Props = {
   visible: boolean;
   /** When false, unmounts immediately instead of fading. */
   fadeOut?: boolean;
+  backgroundColor?: string;
 };
 
 /** Full-screen logo + pulsing dots (auth gate & map boot). */
-export function BrandedLoading({ visible, fadeOut = true }: Props) {
+export function BrandedLoading({ visible, fadeOut = true, backgroundColor }: Props) {
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const dot1 = useRef(new Animated.Value(0.3)).current;
@@ -78,7 +79,7 @@ export function BrandedLoading({ visible, fadeOut = true }: Props) {
 
   return (
     <Animated.View
-      style={[styles.overlay, { opacity, backgroundColor: colors.bg }]}
+      style={[styles.overlay, { opacity, backgroundColor: backgroundColor ?? colors.bg }]}
       pointerEvents={visible ? "auto" : "none"}
     >
       <Animated.Image

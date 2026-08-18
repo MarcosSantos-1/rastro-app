@@ -28,7 +28,13 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
  * Stack sempre montado. Overlay cobre até a rota certa existir.
  * O replace só roda depois que o navigator tem key — senão o loading fica eterno.
  */
-function OnboardingGuard({ children }: { children: ReactNode }) {
+function OnboardingGuard({
+  children,
+  onOverlayChange,
+}: {
+  children: ReactNode;
+  onOverlayChange: (visible: boolean) => void;
+}) {
   const router = useRouter();
   const segments = useSegments();
   const navState = useRootNavigationState();
@@ -72,19 +78,13 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
   const showOverlay = gate === "loading" || (gate === "onboarding" && !onOnboarding);
 
   useEffect(() => {
-    if (!showOverlay) return;
-    void SplashScreen.hideAsync().catch(() => {});
-  }, [showOverlay]);
+    onOverlayChange(showOverlay);
+  }, [showOverlay, onOverlayChange]);
 
-  return (
-    <>
-      {children}
-      <BrandedLoading visible={showOverlay} fadeOut={false} />
-    </>
-  );
+  return <>{children}</>;
 }
 
-function AppShell() {
+function AppShell({ onGateOverlayChange }: { onGateOverlayChange: (visible: boolean) => void }) {
   const { colors, isDark } = useRastroTheme();
   const navTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),
@@ -99,7 +99,7 @@ function AppShell() {
   };
 
   return (
-    <OnboardingGuard>
+    <OnboardingGuard onOverlayChange={onGateOverlayChange}>
       <ThemeProvider value={navTheme}>
         <View style={{ flex: 1, backgroundColor: colors.bg }}>
           <StatusBar style={isDark ? "light" : "dark"} translucent={false} backgroundColor={colors.bg} />
@@ -159,6 +159,26 @@ function AppShell() {
   );
 }
 
+function RootBoot({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const { colors } = useRastroTheme();
+  const [gateOverlay, setGateOverlay] = useState(true);
+
+  useEffect(() => {
+    void SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <AppShell onGateOverlayChange={setGateOverlay} />
+      <BrandedLoading
+        visible={!fontsLoaded || gateOverlay}
+        fadeOut={false}
+        backgroundColor="#FFFFFF"
+      />
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Archivo_400Regular,
@@ -167,13 +187,11 @@ export default function RootLayout() {
     MartianMono_500Medium,
   });
 
-  if (!fontsLoaded) return null;
-
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <RastroThemeProvider>
-          <AppShell />
+          <RootBoot fontsLoaded={fontsLoaded} />
         </RastroThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>

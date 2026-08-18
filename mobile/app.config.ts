@@ -82,10 +82,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           image: "./assets/images/rastro_logo_mark.png",
           imageWidth: 200,
           resizeMode: "contain",
-          backgroundColor: "#F3F6F4",
+          backgroundColor: "#FFFFFF",
           dark: {
             image: "./assets/images/rastro_logo_mark.png",
-            backgroundColor: "#07130D",
+            backgroundColor: "#FFFFFF",
           },
         },
       ],
